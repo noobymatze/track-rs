@@ -1,0 +1,19 @@
+[package]
+name = "track-rs"
+version = "0.1.0"
+authors = ["Matthias Metzger"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+structopt = "0.3"
+reqwest = { version = "0.10.8", features = ["blocking", "json"] }
+url = { version = "2.1.1", features = ["serde"] }
+anyhow = "1.0.32"
+cli-table = "0.3"
+chrono = "0.4"
+thiserror = "1.0.20"
+dirs = "3.0.1"

@@ -1,11 +1,10 @@
+mod cli;
 mod redmine;
 mod track;
-mod cli;
 
-use structopt::StructOpt;
-use crate::track::Config;
 use crate::cli::Options;
-
+use crate::track::Config;
+use structopt::StructOpt;
 
 fn main() -> Result<(), anyhow::Error> {
     let options = Options::from_args();

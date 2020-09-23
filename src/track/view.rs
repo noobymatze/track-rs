@@ -35,9 +35,7 @@ fn view_time_entry(entry: &TimeEntry) -> Row {
     let hours = entry.hours.to_string();
     let comment = entry.comments.clone().unwrap_or("".to_string());
 
-    let justify_right = CellFormat::builder()
-        .justify(Justify::Right)
-        .build();
+    let justify_right = CellFormat::builder().justify(Justify::Right).build();
 
     let cells = vec![
         Cell::new(&project.unwrap_or("".to_string()), Default::default()),

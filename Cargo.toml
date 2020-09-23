@@ -1,5 +1,5 @@
 [package]
-name = "track-rs"
+name = "track"
 version = "0.1.0"
 authors = ["Matthias Metzger"]
 edition = "2018"

@@ -1131,7 +1131,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "track-rs"
+name = "track"
 version = "0.1.0"
 dependencies = [
  "anyhow",

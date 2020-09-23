@@ -1,17 +1,14 @@
 mod redmine;
 mod track;
+mod cli;
 
+use structopt::StructOpt;
 use crate::track::Config;
+use crate::cli::Options;
+
 
 fn main() -> Result<(), anyhow::Error> {
+    let options = Options::from_args();
     let config = Config::load()?;
-    if let Some(config) = config {
-        let client = redmine::request::Client::new(config);
-        let time_entries = client.get_time_entries()?;
-
-        let table = track::view::view_time_entries(time_entries)?;
-        table.print_stdout()?;
-    }
-
-    Ok(())
+    cli::run(options, config)
 }

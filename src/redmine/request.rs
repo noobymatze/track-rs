@@ -1,9 +1,11 @@
 use reqwest::blocking;
 
 use crate::redmine::{
-    Activities, CustomFields, NewTimeEntries, NewTimeEntry, Project, Projects, TimeEntries,
+    Activities, CustomFields, NewTimeEntries, NewTimeEntry, Project, Projects, TimeEntries, User,
+    UserResponse,
 };
 use crate::track::Config;
+use url::Url;
 
 #[derive(Debug)]
 pub struct Client {
@@ -70,8 +72,24 @@ impl Client {
         let mut x = query.clone();
         x.push(("key", key));
 
-        let result: T = self.client.get(url).query(&x).send()?.json()?;
+        let result = self.client.get(url).query(&x).send()?.json()?;
 
         Ok(result)
     }
+}
+
+pub fn login(
+    client: blocking::Client,
+    base_url: Url,
+    user: String,
+    password: String,
+) -> anyhow::Result<User> {
+    let url = base_url.join("users/current.json")?;
+    let result: UserResponse = client
+        .get(url)
+        .basic_auth(user, Some(password))
+        .send()?
+        .json()?;
+
+    Ok(result.user)
 }

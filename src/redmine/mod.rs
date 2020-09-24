@@ -100,3 +100,18 @@ pub struct CustomValue {
     pub id: i32,
     pub value: String,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UserResponse {
+    pub user: User,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct User {
+    pub id: i32,
+    pub login: String,
+    pub firstname: String,
+    pub lastname: String,
+    pub mail: String,
+    pub api_key: String,
+}

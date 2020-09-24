@@ -4,10 +4,11 @@ use crate::redmine::{
 use crate::track::Config;
 use crate::{redmine, track};
 use anyhow::anyhow;
-use dialoguer::{Confirm, Input};
+use dialoguer::{Confirm, Input, Password};
 use regex::Regex;
 use std::str::FromStr;
 use structopt::StructOpt;
+use url::Url;
 
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "track", about = "Track your time with redmine.")]
@@ -20,8 +21,14 @@ pub struct Options {
 enum Command {
     #[structopt(name = "login", about = "Login to your account.")]
     Login {
-        #[structopt(name = "user", short = "u")]
+        #[structopt(name = "user", short = "u", about = "Your Redmine user.")]
         user: String,
+        #[structopt(
+            name = "baseUrl",
+            short = "b",
+            about = "The baseUrl of your redmine installation."
+        )]
+        base_url: String,
     },
     #[structopt(name = "list", about = "List your time entries for the current day.")]
     List,
@@ -81,7 +88,17 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
             table.print_stdout()?;
             Ok(())
         }
-        (Some(Command::Login { user }), _) => Ok(()),
+        (Some(Command::Login { user, base_url }), _) => {
+            let pw = Password::new().with_prompt("Password").interact()?;
+            let client = reqwest::blocking::Client::new();
+            let url = Url::parse(&*base_url)?;
+            let copied_url = url.clone();
+            let user = redmine::request::login(client, url, user, pw)?;
+            let config = Config::new(copied_url, user);
+            config.store()?;
+            println!("You have successfully logged in!");
+            Ok(())
+        }
         (_, None) => Err(anyhow!(
             "You don't seem to have logged in yet, please use `track login`."
         )),

@@ -132,7 +132,8 @@ fn select_activity(activities: Activities) -> Activity {
 
 fn ask_for_issue() -> Option<i32> {
     let i: String = Input::new()
-        .with_prompt("Issue you have been working on")
+        .with_prompt("Issue")
+        .allow_empty(true)
         .validate_with(|v: &str| {
             let re = Regex::new(r"\d+").unwrap();
             if v.is_empty() || re.is_match(v) {

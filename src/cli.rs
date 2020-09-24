@@ -57,13 +57,11 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                 }
             }
 
-            println!("{:?}", custom_values);
-
             let today = chrono::Local::now().format("%Y-%m-%d").to_string();
             let new_entry = NewTimeEntry {
                 issue_id: issue,
                 project_id: project.map(|p| p.id),
-                hours: hours,
+                hours,
                 comments: comment,
                 activity_id: activity.id,
                 custom_fields: custom_values,
@@ -160,11 +158,7 @@ fn ask_for_hours() -> f64 {
 fn ask_for_custom_field(field: CustomField) -> anyhow::Result<Option<CustomValue>> {
     match &*field.field_format {
         "bool" => {
-            let result = if field.is_required() {
-                Confirm::new().with_prompt(field.name).interact()?
-            } else {
-                Confirm::new().with_prompt(field.name).interact()?
-            };
+            let result = Confirm::new().with_prompt(field.name).interact()?;
 
             Ok(Some(CustomValue {
                 id: field.id,

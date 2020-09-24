@@ -37,16 +37,22 @@ impl Config {
     pub fn load() -> Result<Option<Self>, anyhow::Error> {
         let home_dir = dirs::home_dir().ok_or(HomeDirNotFound())?;
         let track_file = home_dir.join(".track");
-        let file = File::open(track_file)?;
-        let reader = BufReader::new(file);
-        let config = serde_json::from_reader(reader)?;
-        Ok(Some(config))
+
+        if track_file.exists() {
+            let file = File::open(track_file)?;
+            let reader = BufReader::new(file);
+            let config = serde_json::from_reader(reader)?;
+            Ok(Some(config))
+        }
+        else {
+            Ok(None)
+        }
     }
 
     pub fn store(&self) -> anyhow::Result<()> {
         let home_dir = dirs::home_dir().ok_or(HomeDirNotFound())?;
         let track_file = home_dir.join(".track");
-        let file = File::open(track_file)?;
+        let file = File::create(track_file)?;
         let writer = BufWriter::new(file);
         serde_json::to_writer(writer, self)?;
 

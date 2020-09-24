@@ -77,7 +77,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
 
             println!("{:?}", new_entry);
 
-            let result = client.create_time_entry(new_entry)?;
+            let _result = client.create_time_entry(new_entry)?;
             Ok(())
         }
         (Some(Command::List), Some(config)) => {
@@ -100,7 +100,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
             Ok(())
         }
         (_, None) => Err(anyhow!(
-            "You don't seem to have logged in yet, please use `track login`."
+            "Hi, you don't seem to have logged in yet. Please use \n\n    `track login` \n\n"
         )),
     }
 }

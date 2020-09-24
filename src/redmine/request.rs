@@ -1,7 +1,7 @@
 use reqwest::blocking;
 
 use crate::redmine::{
-    Activities, CustomFields, NewTimeEntries, NewTimeEntry, Project, Projects, TimeEntries, User,
+    Activities, CustomFields, NewTimeEntries, NewTimeEntry, Projects, TimeEntries, User,
     UserResponse,
 };
 use crate::track::Config;
@@ -51,7 +51,7 @@ impl Client {
         let url = self.config.base_url.clone().join("time_entries.json")?;
         let new_entry = NewTimeEntries { time_entry: entry };
 
-        let result = self
+        let _result = self
             .client
             .post(url)
             .json(&new_entry)

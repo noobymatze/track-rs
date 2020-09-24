@@ -1,6 +1,6 @@
 use reqwest::blocking;
 
-use crate::redmine::{Activities, Project, Projects, TimeEntries};
+use crate::redmine::{Activities, CustomFields, NewTimeEntry, Project, Projects, TimeEntries, NewTimeEntries};
 use crate::track::Config;
 
 #[derive(Debug)]
@@ -59,12 +59,41 @@ impl Client {
 
     pub fn get_activities(&self) -> anyhow::Result<Activities> {
         let key = self.config.key.clone();
-        let url = self.config.base_url.clone()
-            .join("enumerations")?
-            .join("time_entry_activities.json")?;
+        let url = self
+            .config
+            .base_url
+            .clone()
+            .join("enumerations/time_entry_activities.json")?;
 
         let result = self.client.get(url).query(&[("key", key)]).send()?.json()?;
 
         Ok(result)
+    }
+
+    pub fn get_custom_fields(&self) -> anyhow::Result<CustomFields> {
+        let key = self.config.key.clone();
+        let url = self.config.base_url.clone().join("custom_fields.json")?;
+
+        let result = self.client.get(url).query(&[("key", key)]).send()?.json()?;
+
+        Ok(result)
+    }
+
+    pub fn create_time_entry(&self, entry: NewTimeEntry) -> anyhow::Result<()> {
+        let key = self.config.key.clone();
+        let url = self.config.base_url.clone().join("time_entries.json")?;
+        let new_entry = NewTimeEntries {
+            time_entry: entry
+        };
+
+        let result = self
+            .client
+            .post(url)
+            .json(&new_entry)
+            .query(&[("key", key)])
+            .send()?
+            .text()?;
+
+        Ok(())
     }
 }

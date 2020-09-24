@@ -27,18 +27,17 @@ pub struct TimeEntry {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CustomValue {
-    id: i32,
-    value: String,
+pub struct NewTimeEntries {
+    pub time_entry: NewTimeEntry,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NewTimeEntry {
-    pub issue_id: i32,
-    pub project_id: i32,
+    pub issue_id: Option<i32>,
+    pub project_id: Option<i32>,
     pub spent_on: String,
     pub hours: f64,
-    pub activity: String,
+    pub activity_id: i32,
     pub comments: String,
     pub custom_fields: Vec<CustomValue>,
 }
@@ -70,4 +69,34 @@ pub struct Activity {
     pub id: i32,
     pub name: String,
     pub is_default: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CustomFields {
+    pub custom_fields: Vec<CustomField>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CustomField {
+    pub id: i32,
+    pub name: String,
+    pub is_required: Option<bool>,
+    pub field_format: String,
+    pub customized_type: String,
+}
+
+impl CustomField {
+    pub fn is_for_time_entry(&self) -> bool {
+        self.customized_type == "time_entry"
+    }
+
+    pub fn is_required(&self) -> bool {
+        self.is_required.unwrap_or(false)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CustomValue {
+    pub id: i32,
+    pub value: String,
 }

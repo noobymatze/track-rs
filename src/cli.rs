@@ -1,8 +1,10 @@
-use crate::redmine::{Activities, Activity, Project, Projects};
+use crate::redmine::{
+    Activities, Activity, CustomField, CustomValue, NewTimeEntry, Project, Projects,
+};
 use crate::track::Config;
 use crate::{redmine, track};
 use anyhow::anyhow;
-use dialoguer::Input;
+use dialoguer::{Confirm, Input};
 use regex::Regex;
 use std::str::FromStr;
 use structopt::StructOpt;
@@ -17,7 +19,10 @@ pub struct Options {
 #[derive(StructOpt, Debug, Clone)]
 enum Command {
     #[structopt(name = "login", about = "Login to your account.")]
-    Login,
+    Login {
+        #[structopt(name = "user", short = "u")]
+        user: String,
+    },
     #[structopt(name = "list", about = "List your time entries for the current day.")]
     List,
 }
@@ -27,20 +32,47 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
         (None, Some(config)) => {
             let client = redmine::request::Client::new(config);
 
-            if let Some(issue) = ask_for_issue() {
-                let comment = ask_for_comment();
-                let hours = ask_for_hours();
-                let activities = client.get_activities()?;
-                let activity = select_activity(activities);
+            let (project, issue) = match ask_for_issue() {
+                None => {
+                    let projects = client.get_projects()?;
+                    let project = select_project(projects);
+                    (project, None)
+                }
 
+                issue => (None, issue),
+            };
 
-            } else {
-                let projects = client.get_projects()?;
-                if let Some(project) = select_project(projects) {
-                    println!("{}", project.name)
+            let comment = ask_for_comment();
+            let hours = ask_for_hours();
+            let activities = client.get_activities()?;
+            let activity = select_activity(activities);
+            let custom_fields = client.get_custom_fields()?;
+
+            let mut custom_values = vec![];
+            for field in custom_fields.custom_fields {
+                if field.is_for_time_entry() && field.is_required() {
+                    if let Some(value) = ask_for_custom_field(field)? {
+                        custom_values.push(value)
+                    }
                 }
             }
 
+            println!("{:?}", custom_values);
+
+            let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+            let new_entry = NewTimeEntry {
+                issue_id: issue,
+                project_id: project.map(|p| p.id),
+                hours: hours,
+                comments: comment,
+                activity_id: activity.id,
+                custom_fields: custom_values,
+                spent_on: today,
+            };
+
+            println!("{:?}", new_entry);
+
+            let result = client.create_time_entry(new_entry)?;
             Ok(())
         }
         (Some(Command::List), Some(config)) => {
@@ -51,7 +83,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
             table.print_stdout()?;
             Ok(())
         }
-        (Some(Command::Login), _) => Ok(()),
+        (Some(Command::Login { user }), _) => Ok(()),
         (_, None) => Err(anyhow!(
             "You don't seem to have logged in yet, please use `track login`."
         )),
@@ -82,10 +114,15 @@ fn select_activity(activities: Activities) -> Activity {
         .iter()
         .map(|a| a.name.clone())
         .collect();
-    let default = 0;
+
+    let default = activities
+        .activities
+        .iter()
+        .position(|a| a.is_default.unwrap_or(false))
+        .unwrap_or(0);
 
     let selection = dialoguer::Select::new()
-        .with_prompt("Please choose the project")
+        .with_prompt("Activity")
         .items(&selections[..])
         .default(default)
         .paged(true)
@@ -118,4 +155,34 @@ fn ask_for_comment() -> String {
 
 fn ask_for_hours() -> f64 {
     Input::new().with_prompt("Hours").interact().unwrap()
+}
+
+fn ask_for_custom_field(field: CustomField) -> anyhow::Result<Option<CustomValue>> {
+    match &*field.field_format {
+        "bool" => {
+            let result = if field.is_required() {
+                Confirm::new().with_prompt(field.name).interact()?
+            } else {
+                Confirm::new().with_prompt(field.name).interact()?
+            };
+
+            Ok(Some(CustomValue {
+                id: field.id,
+                value: match result {
+                    true => "1".to_string(),
+                    false => "0".to_string(),
+                },
+            }))
+        }
+
+        "string" => {
+            let result = Input::new().with_prompt(field.name).interact()?;
+            Ok(Some(CustomValue {
+                id: field.id,
+                value: result,
+            }))
+        }
+
+        format => Err(anyhow!("The format {} is unknown, sorry.", format)),
+    }
 }

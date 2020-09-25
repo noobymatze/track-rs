@@ -24,4 +24,4 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: track
-        path: target/x86_64-unknown-linux-musl/build/track
+        path: target/x86_64-unknown-linux-musl/release/track

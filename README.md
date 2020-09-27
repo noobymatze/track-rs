@@ -57,7 +57,6 @@ UX improvements.
 ## Roadmap
 
 - [ ] Show a weekly visualisation of your time
-- [ ] Allow to implement 
 - [ ] Write tests
 - [ ] Allow to provide a flag --yesterday to track time from the day before.
 

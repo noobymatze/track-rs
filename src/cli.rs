@@ -104,7 +104,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
             let url = Url::parse(&*base_url)?;
             let copied_url = url.clone();
             let user = redmine::request::login(client, url, user, pw)?;
-            let config = Config::new(copied_url, user);
+            let config = Config::new(copied_url, user)?;
             config.store()?;
             println!("You have successfully logged in!");
             Ok(())

@@ -113,5 +113,5 @@ pub struct User {
     pub firstname: String,
     pub lastname: String,
     pub mail: String,
-    pub api_key: String,
+    pub api_key: Option<String>,
 }

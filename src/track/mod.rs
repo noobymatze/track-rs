@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter};
 
 use crate::redmine::User;
-use crate::track::Error::HomeDirNotFound;
+use crate::track::Error::{HomeDirNotFound, ApiKeyMissing};
 use std::io;
 use thiserror::Error;
 use url::Url;
@@ -34,6 +34,8 @@ pub enum Error {
     Io(#[from] io::Error),
     #[error("The configuration could not be (de)/serialized.")]
     Json(#[from] serde_json::Error),
+    #[error("The API key is missing, please create one in your user settings.")]
+    ApiKeyMissing,
 }
 
 impl Config {
@@ -46,13 +48,15 @@ impl Config {
     /// let config = Config::new("https://myredmine.com", user);
     /// assert(config.user_id, 1);
     /// ```
-    pub fn new(base_url: Url, user: User) -> Self {
-        Config {
-            key: user.api_key,
+    pub fn new(base_url: Url, user: User) -> Result<Self, Error> {
+        let config = Config {
+            key: user.api_key.ok_or(ApiKeyMissing)?,
             base_url,
             login: user.login,
             user_id: user.id,
-        }
+        };
+
+        Ok(config)
     }
 
     /// Load the configuration from `~/.track`.

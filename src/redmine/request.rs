@@ -55,7 +55,7 @@ impl Client {
             .client
             .post(url)
             .json(&new_entry)
-            .query(&[("key", key)])
+            .header("X-Redmine-API-Key", key)
             .send()?
             .text()?;
 
@@ -69,10 +69,7 @@ impl Client {
         let key = self.config.key.clone();
         let url = self.config.base_url.clone().join(path)?;
 
-        let mut x = query.clone();
-        x.push(("key", key));
-
-        let result = self.client.get(url).query(&x).send()?.json()?;
+        let result = self.client.get(url).header("X-Redmine-API-Key", key).query(&query).send()?.json()?;
 
         Ok(result)
     }

@@ -6,11 +6,10 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter};
 
 use crate::redmine::User;
-use crate::track::Error::{HomeDirNotFound, ApiKeyMissing};
+use crate::track::Error::{ApiKeyMissing, HomeDirNotFound};
 use std::io;
 use thiserror::Error;
 use url::Url;
-
 
 /// A `Config` defines all parameters necessary, to connect to a Redmine server.
 ///
@@ -39,7 +38,6 @@ pub enum Error {
 }
 
 impl Config {
-
     /// Returns a new `Config` based on the `base_url` and `user`.
     ///
     /// ## Example

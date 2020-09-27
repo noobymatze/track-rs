@@ -54,7 +54,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                 Some((from, to)) => {
                     let duration = to - from;
                     let hours = duration.num_hours() as f64;
-                    let remaining_minutes = duration.num_minutes() % duration.num_hours();
+                    let remaining_minutes = duration.num_minutes() % (duration.num_hours() * 60);
                     let minutes: f64 = (remaining_minutes as f64 / 15.0) * 0.25;
                     hours + minutes
                 }

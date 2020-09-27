@@ -4,6 +4,7 @@ use crate::redmine::{
 use crate::track::Config;
 use crate::{redmine, track};
 use anyhow::anyhow;
+use chrono::Duration;
 use dialoguer::{Confirm, Input, Password};
 use regex::Regex;
 use std::str::FromStr;
@@ -13,6 +14,12 @@ use url::Url;
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "track", about = "Track your time with redmine.")]
 pub struct Options {
+    #[structopt(
+        name = "yesterday",
+        short = "y",
+        about = "Create entry for yesterday."
+    )]
+    yesterday: bool,
     #[structopt(subcommand)]
     command: Option<Command>,
 }
@@ -30,8 +37,18 @@ enum Command {
         )]
         base_url: String,
     },
-    #[structopt(name = "list", about = "List your time entries for the current day.")]
-    List,
+    #[structopt(
+        name = "list",
+        about = "List your time entries for the current day or yesterday."
+    )]
+    List {
+        #[structopt(
+            name = "yesterday",
+            short = "y",
+            about = "Show only time entries for yesterday."
+        )]
+        yesterday: bool,
+    },
 }
 
 pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error> {
@@ -73,7 +90,14 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                 }
             }
 
-            let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+            let today = match options.yesterday {
+                true => {
+                    println!("Creating TimeEntry for yesterday");
+                    chrono::Local::now() - Duration::days(1)
+                },
+                false => chrono::Local::now()
+            };
+
             let new_entry = NewTimeEntry {
                 issue_id: issue,
                 project_id: project.map(|p| p.id),
@@ -81,7 +105,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                 comments: comment,
                 activity_id: activity.id,
                 custom_fields: custom_values,
-                spent_on: today,
+                spent_on: today.format("%Y-%m-%d").to_string(),
             };
 
             let _result = client.create_time_entry(new_entry)?;
@@ -90,9 +114,14 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
 
             Ok(())
         }
-        (Some(Command::List), Some(config)) => {
+        (Some(Command::List { yesterday }), Some(config)) => {
             let client = redmine::request::Client::new(config);
-            let time_entries = client.get_time_entries()?;
+            let day = match yesterday {
+                true => chrono::Local::now() + Duration::days(1),
+                false => chrono::Local::now(),
+            };
+
+            let time_entries = client.get_time_entries(day)?;
 
             let table = track::view::view_time_entries(time_entries)?;
             table.print_stdout()?;

@@ -58,7 +58,7 @@ UX improvements.
 
 - [ ] Show a weekly visualisation of your time
 - [ ] Write tests
-- [ ] Allow to provide a flag --yesterday to track time from the day before.
+- [x] Allow to provide a flag --yesterday to track time from the day before.
 
 
 [redmine]: https://www.redmine.org/

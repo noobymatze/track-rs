@@ -5,6 +5,7 @@ use crate::redmine::{
     UserResponse,
 };
 use crate::track::Config;
+use chrono::{DateTime, Local};
 use url::Url;
 
 #[derive(Debug)]
@@ -21,8 +22,8 @@ impl Client {
         }
     }
 
-    pub fn get_time_entries(&self) -> anyhow::Result<TimeEntries> {
-        let date = chrono::Local::now().format("%Y-%m-%d").to_string();
+    pub fn get_time_entries(&self, day: DateTime<Local>) -> anyhow::Result<TimeEntries> {
+        let date = day.format("%Y-%m-%d").to_string();
         let user_id = self.config.user_id;
 
         self.get(

@@ -7,9 +7,14 @@ use std::io::{BufReader, BufWriter};
 
 use crate::redmine::User;
 use crate::track::Error::HomeDirNotFound;
+use std::io;
 use thiserror::Error;
 use url::Url;
 
+
+/// A `Config` defines all parameters necessary, to connect to a Redmine server.
+///
+/// It is stored in the users home directory as a .track file.
 #[derive(Serialize, Deserialize, Debug, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -19,38 +24,70 @@ pub struct Config {
     pub user_id: i32,
 }
 
+/// This type represents any error, that can happen while loading or storing
+/// a `Config`.
 #[derive(Error, Debug)]
-enum Error {
-    #[error("Your home directory could not be found, sorry.")]
-    HomeDirNotFound(),
+pub enum Error {
+    #[error("Your home directory could not be found.")]
+    HomeDirNotFound,
+    #[error("The configuration could not be read or written.")]
+    Io(#[from] io::Error),
+    #[error("The configuration could not be (de)/serialized.")]
+    Json(#[from] serde_json::Error),
 }
 
 impl Config {
+
+    /// Returns a new `Config` based on the `base_url` and `user`.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// let config = Config::new("https://myredmine.com", user);
+    /// assert(config.user_id, 1);
+    /// ```
     pub fn new(base_url: Url, user: User) -> Self {
         Config {
             key: user.api_key,
-            base_url: base_url,
+            base_url,
             login: user.login,
             user_id: user.id,
         }
     }
-    pub fn load() -> Result<Option<Self>, anyhow::Error> {
-        let home_dir = dirs::home_dir().ok_or(HomeDirNotFound())?;
+
+    /// Load the configuration from `~/.track`.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// let result = Config::load();
+    /// ```
+    ///
+    pub fn load() -> Result<Option<Self>, Error> {
+        let home_dir = dirs::home_dir().ok_or(Error::HomeDirNotFound)?;
         let track_file = home_dir.join(".track");
 
-        if track_file.exists() {
-            let file = File::open(track_file)?;
-            let reader = BufReader::new(file);
-            let config = serde_json::from_reader(reader)?;
-            Ok(Some(config))
+        if !track_file.exists() {
+            return Ok(None);
         }
-        else {
-            Ok(None)
-        }
+
+        let file = File::open(track_file)?;
+        let reader = BufReader::new(file);
+        let config = serde_json::from_reader(reader)?;
+        Ok(Some(config))
     }
 
-    pub fn store(&self) -> anyhow::Result<()> {
-        let home_dir = dirs::home_dir().ok_or(HomeDirNotFound())?;
+    /// Store this configuration in `~/.track`.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// let config = Config::new("https://myredmine.com", user);
+    /// config.store();
+    /// ```
+    ///
+    pub fn store(&self) -> Result<(), Error> {
+        let home_dir = dirs::home_dir().ok_or(HomeDirNotFound)?;
         let track_file = home_dir.join(".track");
         let file = File::create(track_file)?;
         let writer = BufWriter::new(file);

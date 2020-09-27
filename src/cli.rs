@@ -57,8 +57,8 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                     let remaining_minutes = duration.num_minutes() % duration.num_hours();
                     let minutes: f64 = (remaining_minutes as f64 / 15.0) * 0.25;
                     hours + minutes
-                },
-                None => ask_for_hours()
+                }
+                None => ask_for_hours(),
             };
             let activities = client.get_activities()?;
             let activity = select_activity(activities);
@@ -213,7 +213,7 @@ fn analyze_comments(input: String) -> Option<(chrono::NaiveTime, chrono::NaiveTi
     let re = Regex::new(r"^\s*\d{2}:\d{2}\s*-\s*\d{2}:\d{2}").ok();
     let re = match re {
         None => return None,
-        Some(re) => re
+        Some(re) => re,
     };
 
     let m = re.find(&*input)?;

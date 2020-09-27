@@ -50,7 +50,16 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
             };
 
             let comment = ask_for_comment();
-            let hours = ask_for_hours();
+            let hours = match analyze_comments(comment.clone()) {
+                Some((from, to)) => {
+                    let duration = to - from;
+                    let hours = duration.num_hours() as f64;
+                    let remaining_minutes = duration.num_minutes() % duration.num_hours();
+                    let minutes: f64 = (remaining_minutes as f64 / 15.0) * 0.25;
+                    hours + minutes
+                },
+                None => ask_for_hours()
+            };
             let activities = client.get_activities()?;
             let activity = select_activity(activities);
             let custom_fields = client.get_custom_fields()?;
@@ -75,9 +84,10 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                 spent_on: today,
             };
 
-            println!("{:?}", new_entry);
-
             let _result = client.create_time_entry(new_entry)?;
+
+            println!("Entry successfully created");
+
             Ok(())
         }
         (Some(Command::List), Some(config)) => {
@@ -197,4 +207,19 @@ fn ask_for_custom_field(field: CustomField) -> anyhow::Result<Option<CustomValue
 
         format => Err(anyhow!("The format {} is unknown, sorry.", format)),
     }
+}
+
+fn analyze_comments(input: String) -> Option<(chrono::NaiveTime, chrono::NaiveTime)> {
+    let re = Regex::new(r"^\s*\d{2}:\d{2}\s*-\s*\d{2}:\d{2}").ok();
+    let re = match re {
+        None => return None,
+        Some(re) => re
+    };
+
+    let m = re.find(&*input)?;
+    let filtered: String = m.as_str().chars().filter(|c| !c.is_whitespace()).collect();
+    let result: Vec<&str> = filtered.as_str().split("-").collect();
+    let left = chrono::NaiveTime::parse_from_str(result[0], "%H:%M").ok();
+    let right = chrono::NaiveTime::parse_from_str(result[1], "%H:%M").ok();
+    left.and_then(|l| right.map(|r| (l, r)))
 }

@@ -245,7 +245,7 @@ fn ask_for_custom_field(field: CustomField) -> anyhow::Result<Option<CustomValue
 }
 
 fn analyze_comments(input: String) -> Option<(chrono::NaiveTime, chrono::NaiveTime)> {
-    let re = Regex::new(r"\s*\d{2}:\d{2}\s*-\s*\d{2}:\d{2}").ok();
+    let re = Regex::new(r"\s*\d\d?:\d{2}\s*-\s*\d\d?:\d{2}").ok();
     let re = match re {
         None => return None,
         Some(re) => re,

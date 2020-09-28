@@ -75,7 +75,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                         duration.num_minutes()
                     }
                     else {
-                        duration.num_minutes() % (duration.num_hours() * 60);
+                        duration.num_minutes() % (duration.num_hours() * 60)
                     };
 
                     let minutes: f64 = (remaining_minutes as f64 / 15.0) * 0.25;

@@ -4,12 +4,13 @@ use crate::redmine::{
 use crate::track::Config;
 use crate::{redmine, track};
 use anyhow::anyhow;
-use chrono::Duration;
+use chrono::{Duration, Datelike};
 use dialoguer::{Confirm, Input, Password};
 use regex::Regex;
 use std::str::FromStr;
 use structopt::StructOpt;
 use url::Url;
+use crate::track::view::view_time_entries_week;
 
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "track", about = "Track your time with redmine.")]
@@ -48,6 +49,12 @@ enum Command {
             about = "Show only time entries for yesterday."
         )]
         yesterday: bool,
+        #[structopt(
+            name = "week",
+            short = "w",
+            about = "Show all time entries for the current week."
+        )]
+        week: bool,
     },
 }
 
@@ -120,18 +127,38 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
 
             Ok(())
         }
-        (Some(Command::List { yesterday }), Some(config)) => {
+        (Some(Command::List { yesterday, week }), Some(config)) => {
             let client = redmine::request::Client::new(config);
+            let today = chrono::Local::now();
             let day = match yesterday {
-                true => chrono::Local::now() + Duration::days(1),
-                false => chrono::Local::now(),
+                true => today - Duration::days(1),
+                false => today
             };
 
-            let time_entries = client.get_time_entries(day)?;
+            let (from, to) = match week {
+                true => {
+                    let weekday = today.weekday();
+                    let start = today - Duration::days(weekday.num_days_from_monday() as i64);
+                    let end = today + Duration::days(weekday.num_days_from_sunday() as i64);
+                    (start, Some(end))
+                },
+                false => {
+                    (day, None)
+                }
+            };
 
-            let table = track::view::view_time_entries(time_entries)?;
-            table.print_stdout()?;
-            Ok(())
+            let time_entries = client.get_time_entries(from, to)?;
+            match week {
+                true => {
+                    view_time_entries_week(time_entries)?;
+                    Ok(())
+                },
+                false => {
+                    let table = track::view::view_time_entries(time_entries)?;
+                    table.print_stdout()?;
+                    Ok(())
+                }
+            }
         }
         (Some(Command::Login { user, base_url }), _) => {
             let pw = Password::new().with_prompt("Password").interact()?;

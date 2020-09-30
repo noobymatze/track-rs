@@ -1,8 +1,9 @@
 pub mod request;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Deserializer, de};
+use chrono::{Local, NaiveDate, Date};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct TimeEntries {
     pub time_entries: Vec<TimeEntry>,
     pub offset: i32,
@@ -16,7 +17,7 @@ pub struct Named {
     pub name: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct TimeEntry {
     pub id: i32,
     pub user: Named,
@@ -24,6 +25,7 @@ pub struct TimeEntry {
     pub issue: Option<Named>,
     pub hours: f64,
     pub comments: Option<String>,
+    pub spent_on: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -56,6 +58,14 @@ pub struct Project {
     pub name: String,
     pub identifier: String,
     pub parent: Option<Named>,
+}
+
+fn naive_date_from_str<'de, D>(deserializer: D) -> Result<NaiveDate, D::Error>
+    where
+        D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+    NaiveDate::parse_from_str(&s, "%Y-%m-%d").map_err(de::Error::custom)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -5,27 +5,25 @@ use std::collections::HashMap;
 use std::io;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
-use tui::Terminal;
+use tui::{Terminal, symbols};
 use termion::raw::IntoRawMode;
 use tui::layout::{Layout, Direction, Constraint};
-use tui::widgets::{BarChart, Block, Borders};
+use tui::widgets::{BarChart, Block, Borders, Dataset, Chart, Axis, GraphType};
 use tui::style::{Style, Modifier, Color};
 use termion::event::{Key, Event};
 use termion::input::{Events, TermRead};
-
-struct App<'a> {
-    data: Vec<(&'a str, u64)>
-}
+use chrono::{Datelike, Weekday};
+use tui::text::Span;
 
 pub fn view_time_entries_week(time_entries: TimeEntries) -> anyhow::Result<()> {
     // group by spent_on
     let mut map = HashMap::new();
     for t in time_entries.time_entries {
-        let key = t.spent_on.chars().skip(5).collect::<String>();
-        let v = map.entry(key).or_insert(0.0);
+        let date = chrono::NaiveDate::parse_from_str(&*t.spent_on, "%Y-%m-%d")?;
+        let x = date.weekday();
+        let mut v = map.entry(x).or_insert(0.0);
         *v += t.hours;
     }
-
 
 
     let stdin = io::stdin();
@@ -34,25 +32,96 @@ pub fn view_time_entries_week(time_entries: TimeEntries) -> anyhow::Result<()> {
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App {
-        data: map.iter().map(|(a, b)| (a.as_str(), b.round() as u64)).collect()
-    };
+    let app: Vec<(f64, f64)> = vec![
+        (0.0, *map.get(&Weekday::Mon).unwrap_or(&0.0)),
+        (1.0, *map.get(&Weekday::Tue).unwrap_or(&0.0)),
+        (2.0, *map.get(&Weekday::Wed).unwrap_or(&0.0)),
+        (3.0, *map.get(&Weekday::Thu).unwrap_or(&0.0)),
+        (4.0, *map.get(&Weekday::Fri).unwrap_or(&0.0)),
+        (5.0, *map.get(&Weekday::Sat).unwrap_or(&0.0)),
+        (6.0, *map.get(&Weekday::Sun).unwrap_or(&0.0)),
+    ];
 
     terminal.draw(|f| {
 
+        let dataset = Dataset::default()
+            .name("Total")
+            .marker(symbols::Marker::Braille)
+            .style(Style::default().fg(Color::Cyan))
+            .graph_type(GraphType::Line)
+            .data(&app);
+        let data = &vec![(0.0, 8.0), (1.0, 8.0), (2.0, 8.0), (3.0, 8.0), (4.0, 8.0), (5.0, 8.0), (6.0, 8.0)];
+        let base_line_dataset = Dataset::default()
+            .name("Bound")
+            .marker(symbols::Marker::Braille)
+            .style(Style::default().fg(Color::Magenta))
+            .graph_type(GraphType::Line)
+            .data(&data);
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .margin(2)
+            .margin(1)
             .constraints([Constraint::Percentage(100)].as_ref())
             .split(f.size());
 
-        let barchart = BarChart::default()
-            .block(Block::default().title("Data1").borders(Borders::ALL))
-            .data(&app.data)
-            .bar_width(9)
-            .bar_style(Style::default().fg(Color::Yellow))
-            .value_style(Style::default().fg(Color::Black).bg(Color::Yellow));
-        f.render_widget(barchart, chunks[0]);
+        let chart = Chart::new(vec![base_line_dataset, dataset])
+            .block(
+                Block::default()
+                    .title(Span::styled(
+                        "Week stats",
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ))
+                    .borders(Borders::ALL),
+            )
+            .x_axis(
+                Axis::default()
+                    .title("Day")
+                    .style(Style::default().fg(Color::Gray))
+                    .bounds([0.0, 6.0])
+                    .labels(vec![
+                        Span::styled("Monday", Style::default()),
+                        Span::styled("Tuesday", Style::default()),
+                        Span::styled("Wednesday", Style::default()),
+                        Span::styled("Thursday", Style::default()),
+                        Span::styled("Friday", Style::default()),
+                        Span::styled("Saturday", Style::default()),
+                        Span::styled("Sunday", Style::default()),
+                    ]),
+            )
+            .y_axis(
+                Axis::default()
+                    .title("Hours")
+                    .style(Style::default().fg(Color::Gray))
+                    .bounds([0.0, 12.0])
+                    .labels(vec![
+                        Span::styled("0h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("1h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("2h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("3h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("4h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("5h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::raw("6h"),
+                        Span::styled("7h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("8h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("9h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("10h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("11h", Style::default().add_modifier(Modifier::BOLD)),
+                        Span::styled("12h", Style::default().add_modifier(Modifier::BOLD)),
+                    ]),
+            );
+        f.render_widget(chart, chunks[0]);
+
+        //let barchart = BarChart::default()
+        //    .block(Block::default().title("Statistics Week").borders(Borders::ALL))
+        //    .data(&app)
+        //    .bar_gap(3)
+        //    .max(8)
+        //    .bar_width(11)
+        //    .bar_style(Style::default().fg(Color::Yellow))
+        //    .value_style(Style::default().fg(Color::Black).bg(Color::Yellow))
+        //    .label_style(Style::default());
+        // f.render_widget(barchart, chunks[0]);
 
         //let chunks = Layout::default()
         //    .direction(Direction::Horizontal)

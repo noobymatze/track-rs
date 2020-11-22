@@ -24,6 +24,7 @@ pub struct TimeEntry {
     pub issue: Option<Named>,
     pub hours: f64,
     pub comments: Option<String>,
+    pub spent_on: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

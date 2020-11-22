@@ -22,13 +22,24 @@ impl Client {
         }
     }
 
-    pub fn get_time_entries(&self, day: DateTime<Local>) -> anyhow::Result<TimeEntries> {
-        let date = day.format("%Y-%m-%d").to_string();
+    pub fn get_time_entries(&self, start: DateTime<Local>, end: Option<DateTime<Local>>) -> anyhow::Result<TimeEntries> {
+        let date = start.format("%Y-%m-%d").to_string();
         let user_id = self.config.user_id;
+        let mut query = vec![("user_id", user_id.to_string()), ("limit", 100.to_string())];
+        match end {
+            None => {
+                query.push(("spent_on", date));
+            },
+            Some(end) => {
+                let s = end.format("%Y-%m-%d").to_string();
+                query.push(("from", date));
+                query.push(("to", s));
+            }
+        };
 
         self.get(
             "time_entries.json",
-            vec![("user_id", user_id.to_string()), ("spent_on", date)],
+            query,
         )
     }
 

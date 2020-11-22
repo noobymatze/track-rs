@@ -1,8 +1,8 @@
 use crate::redmine::{TimeEntries, TimeEntry};
+use chrono::{Datelike, Weekday};
 use cli_table::format::{CellFormat, Justify};
 use cli_table::{Cell, Row, Table};
 use std::collections::HashMap;
-use chrono::{Datelike, Weekday};
 
 pub fn view_time_entries(time_entries: TimeEntries) -> Result<Table, anyhow::Error> {
     let bold = CellFormat::builder().bold(true).build();
@@ -50,7 +50,10 @@ fn view_time_entry(entry: &TimeEntry) -> Row {
 }
 
 pub fn view_weekday_working_hours(time_entries: TimeEntries) -> Result<Table, anyhow::Error> {
-    let header_format = CellFormat::builder().bold(true).justify(Justify::Right).build();
+    let header_format = CellFormat::builder()
+        .bold(true)
+        .justify(Justify::Right)
+        .build();
     let centered = CellFormat::builder().justify(Justify::Right).build();
     // group by spent_on
     let mut map = HashMap::new();
@@ -71,10 +74,15 @@ pub fn view_weekday_working_hours(time_entries: TimeEntries) -> Result<Table, an
         Weekday::Sun,
     ];
 
-    let mut all_headers: Vec<Cell> = headers.iter().map(|w| Cell::new(&w.to_string(), header_format)).collect();
+    let mut all_headers: Vec<Cell> = headers
+        .iter()
+        .map(|w| Cell::new(&w.to_string(), header_format))
+        .collect();
     all_headers.push(Cell::new("∑", header_format));
 
-    let mut cells: Vec<Cell> = headers.iter().map(|w| map.get(w).unwrap_or(&0.0))
+    let mut cells: Vec<Cell> = headers
+        .iter()
+        .map(|w| map.get(w).unwrap_or(&0.0))
         .map(|v| Cell::new(&v.to_string(), centered))
         .collect();
 
@@ -82,10 +90,7 @@ pub fn view_weekday_working_hours(time_entries: TimeEntries) -> Result<Table, an
 
     cells.push(Cell::new(&sum.to_string(), centered));
 
-    let rows = vec![
-        Row::new(all_headers),
-        Row::new(cells),
-    ];
+    let rows = vec![Row::new(all_headers), Row::new(cells)];
 
     let result = Table::new(rows, Default::default())?;
 

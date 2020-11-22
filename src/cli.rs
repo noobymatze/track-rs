@@ -4,7 +4,7 @@ use crate::redmine::{
 use crate::track::Config;
 use crate::{redmine, track};
 use anyhow::anyhow;
-use chrono::{Duration, Datelike};
+use chrono::{Datelike, Duration};
 use dialoguer::{Confirm, Input, Password};
 use regex::Regex;
 use std::str::FromStr;
@@ -14,11 +14,7 @@ use url::Url;
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "track", about = "Track your time with redmine.")]
 pub struct Options {
-    #[structopt(
-        name = "yesterday",
-        short = "y",
-        about = "Create entry for yesterday."
-    )]
+    #[structopt(name = "yesterday", short = "y", about = "Create entry for yesterday.")]
     yesterday: bool,
     #[structopt(subcommand)]
     command: Option<Command>,
@@ -80,8 +76,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                     let hours = duration.num_hours() as f64;
                     let remaining_minutes = if hours <= 0.0 {
                         duration.num_minutes()
-                    }
-                    else {
+                    } else {
                         duration.num_minutes() % (duration.num_hours() * 60)
                     };
 
@@ -107,8 +102,8 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                 true => {
                     println!("Creating TimeEntry for yesterday");
                     chrono::Local::now() - Duration::days(1)
-                },
-                false => chrono::Local::now()
+                }
+                false => chrono::Local::now(),
             };
 
             let new_entry = NewTimeEntry {
@@ -141,10 +136,8 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                     let start = today - Duration::days(weekday.num_days_from_monday() as i64);
                     let end = today + Duration::days(weekday.num_days_from_sunday() as i64);
                     (start, Some(end))
-                },
-                false => {
-                    (day, None)
                 }
+                false => (day, None),
             };
 
             let time_entries = client.get_time_entries(from, to)?;
@@ -153,7 +146,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                     let table = track::view::view_weekday_working_hours(time_entries)?;
                     table.print_stdout()?;
                     Ok(())
-                },
+                }
                 false => {
                     let table = track::view::view_time_entries(time_entries)?;
                     table.print_stdout()?;

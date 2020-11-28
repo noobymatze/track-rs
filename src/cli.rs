@@ -14,7 +14,7 @@ use url::Url;
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "track", about = "Track your time with redmine.")]
 pub struct Options {
-    #[structopt(name = "yesterday", short = "y", about = "Create entry for yesterday.")]
+    #[structopt(long = "yesterday", short = "y", about = "Create entry for yesterday.")]
     yesterday: bool,
     #[structopt(subcommand)]
     command: Option<Command>,
@@ -24,31 +24,31 @@ pub struct Options {
 enum Command {
     #[structopt(name = "login", about = "Login to your account.")]
     Login {
-        #[structopt(name = "user", short = "u", about = "Your Redmine user.")]
+        #[structopt(long = "user", short = "u", help = "The name of your Redmine user.")]
         user: String,
         #[structopt(
-            name = "baseUrl",
+            long = "baseUrl",
             short = "b",
-            about = "The baseUrl of your redmine installation."
+            help = "The baseUrl of your redmine installation."
         )]
         base_url: String,
     },
     #[structopt(
         name = "list",
-        about = "List your time entries for the current day or yesterday."
+        about = "List your time entries for today, yesterday or this week."
     )]
     List {
         #[structopt(
-            name = "yesterday",
+            long = "yesterday",
             short = "y",
-            about = "Show only time entries for yesterday."
+            help = "Show only time entries for yesterday."
         )]
         yesterday: bool,
 
         #[structopt(
-            name = "week",
+            long = "week",
             short = "w",
-            about = "Show a summary of the weekly activity."
+            help = "Show a summary of the weekly activity."
         )]
         week: bool,
     },

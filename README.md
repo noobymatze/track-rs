@@ -10,7 +10,7 @@ You can install track by downloading the binary, making it executable
 and putting it some place that is on your path.
 
 ```sh
-$ wget https://github.com/noobymatze/track-rs/releases/download/v0.1.1/track
+$ wget https://github.com/noobymatze/track-rs/releases/download/v0.2.0/track
 $ chmod +x track
 $ sudo mv track /usr/bin
 ```

@@ -126,7 +126,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
             let client = redmine::request::Client::new(config);
             let today = chrono::Local::now();
             let day = match yesterday {
-                true => chrono::Local::now() + Duration::days(1),
+                true => chrono::Local::now() - Duration::days(1),
                 false => chrono::Local::now(),
             };
 

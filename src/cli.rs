@@ -162,7 +162,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
             let user = redmine::request::login(client, url, user, pw)?;
             let config = Config::new(copied_url, user)?;
             config.store()?;
-            println!("You have successfully logged in!");
+            println!("You have successfully logged in! A config file has been created at ~/.track");
             Ok(())
         }
         (_, None) => Err(anyhow!(

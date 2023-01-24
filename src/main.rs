@@ -2,12 +2,12 @@ mod cli;
 mod redmine;
 mod track;
 
-use crate::cli::Options;
+use clap::Parser;
+use crate::cli::Cli;
 use crate::track::Config;
-use structopt::StructOpt;
 
 fn main() -> Result<(), anyhow::Error> {
-    let options = Options::from_args();
+    let options = Cli::parse();
     let config = Config::load()?;
     cli::run(options, config)
 }

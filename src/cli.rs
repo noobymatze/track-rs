@@ -8,54 +8,56 @@ use chrono::{Datelike, Duration};
 use dialoguer::{Confirm, Input, Password};
 use regex::Regex;
 use std::str::FromStr;
-use structopt::StructOpt;
+use clap::Parser;
+use cli_table::print_stdout;
+use dialoguer::theme::ColorfulTheme;
 use url::Url;
 
-#[derive(StructOpt, Debug, Clone)]
-#[structopt(name = "track", about = "Track your time with redmine.")]
-pub struct Options {
-    #[structopt(long = "yesterday", short = "y", about = "Create entry for yesterday.")]
+#[derive(Parser, Debug, Clone)]
+#[clap(name = "track", about = "Track your time with redmine.")]
+pub struct Cli {
+    #[arg(long = "yesterday", short = 'y', help = "Create entry for yesterday.")]
     yesterday: bool,
-    #[structopt(subcommand)]
+    #[command(subcommand)]
     command: Option<Command>,
 }
 
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 enum Command {
-    #[structopt(name = "login", about = "Login to your account.")]
+    #[command(name = "login", about = "Login to your account.")]
     Login {
-        #[structopt(long = "user", short = "u", help = "The name of your Redmine user.")]
+        #[arg(long = "user", short = 'u', help = "The name of your Redmine user.")]
         user: String,
-        #[structopt(
+        #[arg(
             long = "baseUrl",
-            short = "b",
+            short = 'b',
             help = "The baseUrl of your redmine installation."
         )]
         base_url: String,
     },
-    #[structopt(
+    #[command(
         name = "list",
         about = "List your time entries for today, yesterday or this week."
     )]
     List {
-        #[structopt(
+        #[arg(
             long = "yesterday",
-            short = "y",
+            short = 'y',
             help = "Show only time entries for yesterday."
         )]
         yesterday: bool,
 
-        #[structopt(
+        #[arg(
             long = "week",
-            short = "w",
+            short = 'w',
             help = "Show a summary of the weekly activity."
         )]
         week: bool,
     },
 }
 
-pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error> {
-    match (options.command, config) {
+pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
+    match (cli.command, config) {
         (None, Some(config)) => {
             let client = redmine::request::Client::new(config);
 
@@ -98,7 +100,7 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
                 }
             }
 
-            let today = match options.yesterday {
+            let today = match cli.yesterday {
                 true => {
                     println!("Creating TimeEntry for yesterday");
                     chrono::Local::now() - Duration::days(1)
@@ -144,12 +146,12 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
             match week {
                 true => {
                     let table = track::view::view_weekday_working_hours(time_entries)?;
-                    table.print_stdout()?;
+                    print_stdout(table)?;
                     Ok(())
                 }
                 false => {
                     let table = track::view::view_time_entries(time_entries)?;
-                    table.print_stdout()?;
+                    print_stdout(table)?;
                     Ok(())
                 }
             }
@@ -174,11 +176,10 @@ pub fn run(options: Options, config: Option<Config>) -> Result<(), anyhow::Error
 fn select_project(projects: Projects) -> Option<Project> {
     let selections: Vec<String> = projects.projects.iter().map(|p| p.name.clone()).collect();
 
-    let selection = dialoguer::Select::new()
+    let selection = dialoguer::FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Please choose the project")
         .items(&selections[..])
         .default(0)
-        .paged(true)
         .interact_opt()
         .unwrap();
 
@@ -206,7 +207,6 @@ fn select_activity(activities: Activities) -> Activity {
         .with_prompt("Activity")
         .items(&selections[..])
         .default(default)
-        .paged(true)
         .interact()
         .unwrap();
 
@@ -217,7 +217,7 @@ fn ask_for_issue() -> Option<i32> {
     let i: String = Input::new()
         .with_prompt("Issue (leave empty for project only)")
         .allow_empty(true)
-        .validate_with(|v: &str| {
+        .validate_with(|v: &String| {
             let re = Regex::new(r"\d+").unwrap();
             if v.is_empty() || re.is_match(v) {
                 Ok(())

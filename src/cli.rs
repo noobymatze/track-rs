@@ -5,12 +5,12 @@ use crate::track::Config;
 use crate::{redmine, track};
 use anyhow::anyhow;
 use chrono::{Datelike, Duration};
-use dialoguer::{Confirm, Input, Password};
-use regex::Regex;
-use std::str::FromStr;
 use clap::Parser;
 use cli_table::print_stdout;
 use dialoguer::theme::ColorfulTheme;
+use dialoguer::{Confirm, Input, Password};
+use regex::Regex;
+use std::str::FromStr;
 use url::Url;
 
 #[derive(Parser, Debug, Clone)]
@@ -53,6 +53,13 @@ enum Command {
             help = "Show a summary of the weekly activity."
         )]
         week: bool,
+
+        #[arg(
+            long = "project",
+            short = 'p',
+            help = "Show a summary of the weekly activity per project."
+        )]
+        project: bool,
     },
 }
 
@@ -124,7 +131,14 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
 
             Ok(())
         }
-        (Some(Command::List { yesterday, week }), Some(config)) => {
+        (
+            Some(Command::List {
+                yesterday,
+                week,
+                project,
+            }),
+            Some(config),
+        ) => {
             let client = redmine::request::Client::new(config);
             let today = chrono::Local::now();
             let day = match yesterday {
@@ -143,13 +157,18 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
             };
 
             let time_entries = client.get_time_entries(from, to)?;
-            match week {
-                true => {
+            match (week, project) {
+                (_, true) => {
+                    let table = track::view::view_hours_per_project(time_entries)?;
+                    print_stdout(table)?;
+                    Ok(())
+                }
+                (true, _) => {
                     let table = track::view::view_weekday_working_hours(time_entries)?;
                     print_stdout(table)?;
                     Ok(())
                 }
-                false => {
+                _ => {
                     let table = track::view::view_time_entries(time_entries)?;
                     print_stdout(table)?;
                     Ok(())

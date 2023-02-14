@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use chrono::{Datelike, Weekday};
-use cli_table::{Cell, CellStruct, Row, RowStruct, Style, Table, TableStruct};
 use cli_table::format::Justify;
+use cli_table::{Cell, CellStruct, Row, RowStruct, Style, Table, TableStruct};
 
 use crate::redmine::{TimeEntries, TimeEntry};
 
@@ -16,7 +16,8 @@ pub fn view_time_entries(time_entries: TimeEntries) -> Result<TableStruct, anyho
         "Issue".cell().bold(true),
         format!("Hours (∑ {})", total_hours).cell().bold(true),
         "Comment".cell().bold(true),
-    ].row();
+    ]
+    .row();
 
     let mut rows = vec![header_row];
     for entry in entries.iter() {
@@ -40,8 +41,9 @@ fn view_time_entry(entry: &TimeEntry) -> RowStruct {
         project.unwrap_or("".into()).cell(),
         issue.cell(),
         entry.hours.to_string().cell().justify(Justify::Right),
-        comment.unwrap_or("".into()).cell()
-    ].row()
+        comment.unwrap_or("".into()).cell(),
+    ]
+    .row()
 }
 
 pub fn view_weekday_working_hours(time_entries: TimeEntries) -> Result<TableStruct, anyhow::Error> {
@@ -79,6 +81,49 @@ pub fn view_weekday_working_hours(time_entries: TimeEntries) -> Result<TableStru
     cells.push(sum.to_string().cell().justify(Justify::Right));
 
     let rows = vec![all_headers.row(), cells.row()];
+
+    Ok(rows.table())
+}
+
+pub fn view_hours_per_project(time_entries: TimeEntries) -> Result<TableStruct, anyhow::Error> {
+    let mut grouped_entries = HashMap::new();
+    for time_entry in &time_entries.time_entries {
+        grouped_entries
+            .entry(time_entry.project.id)
+            .or_insert_with(|| vec![])
+            .push(time_entry);
+    }
+
+    let total_hours: f64 = time_entries
+        .time_entries
+        .iter()
+        .map(|entry| entry.hours)
+        .sum();
+
+    let mut rows = vec![];
+
+    rows.push(
+        vec![
+            "Project".cell().bold(true),
+            format!("Hours (∑ {})", total_hours).cell().bold(true),
+        ]
+        .row(),
+    );
+
+    for (_, project_entries) in &grouped_entries {
+        let project_name = &project_entries[0].project.name;
+        let cumulative_hours: f64 = project_entries.iter().map(|entry| entry.hours).sum();
+
+        rows.push(
+            vec![
+                project_name.as_ref().unwrap_or(&"".into()).cell(),
+                format!("{:.2}", cumulative_hours)
+                    .cell()
+                    .justify(Justify::Right),
+            ]
+            .row(),
+        );
+    }
 
     Ok(rows.table())
 }

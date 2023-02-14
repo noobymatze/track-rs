@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{Datelike, NaiveDate, Weekday};
-use cli_table::{format::Justify, Cell, CellStruct, Row, RowStruct, Style, Table, TableStruct};
+use cli_table::{format::Justify, Cell, CellStruct, Row, Style, Table, TableStruct};
 
 use crate::redmine::{TimeEntries, TimeEntry};
 
@@ -168,47 +168,4 @@ pub fn print_table(time_entries: &Vec<TimeEntry>) -> Result<TableStruct, anyhow:
     table.push(row.row());
 
     Ok(table.table())
-}
-
-pub fn view_hours_per_project(time_entries: TimeEntries) -> Result<TableStruct, anyhow::Error> {
-    let mut grouped_entries = HashMap::new();
-    for time_entry in &time_entries.time_entries {
-        grouped_entries
-            .entry(time_entry.project.id)
-            .or_insert_with(|| vec![])
-            .push(time_entry);
-    }
-
-    let total_hours: f64 = time_entries
-        .time_entries
-        .iter()
-        .map(|entry| entry.hours)
-        .sum();
-
-    let mut rows = vec![];
-
-    rows.push(
-        vec![
-            "Project".cell().bold(true),
-            format!("Hours (∑ {})", total_hours).cell().bold(true),
-        ]
-        .row(),
-    );
-
-    for (_, project_entries) in &grouped_entries {
-        let project_name = &project_entries[0].project.name;
-        let cumulative_hours: f64 = project_entries.iter().map(|entry| entry.hours).sum();
-
-        rows.push(
-            vec![
-                project_name.as_ref().unwrap_or(&"".into()).cell(),
-                format!("{:.2}", cumulative_hours)
-                    .cell()
-                    .justify(Justify::Right),
-            ]
-            .row(),
-        );
-    }
-
-    Ok(rows.table())
 }

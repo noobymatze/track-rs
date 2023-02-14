@@ -64,13 +64,12 @@ impl Client {
         let url = &self.config.base_url.join("time_entries.json")?;
         let new_entry = NewTimeEntries { time_entry: entry };
 
-        let result = self
-            .client
+        self.client
             .post(url.clone())
             .json(&new_entry)
             .header("X-Redmine-API-Key", key)
             .send()?
-            .text();
+            .text()?;
 
         Ok(())
     }

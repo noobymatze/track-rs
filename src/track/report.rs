@@ -217,29 +217,24 @@ mod tests {
         let day1 = NaiveDate::from_ymd_opt(2022, 1, 1).unwrap();
         let day2 = NaiveDate::from_ymd_opt(2022, 1, 3).unwrap();
 
-        let time_entries = vec![
+        let day1_entries = vec![
             time_entry(1, (1, "John Doe"), (1, "Project A"), 4.0, &day1),
-            time_entry(2, (2, "Jane Doe"), (2, "Project B"), 2.0, &day2),
             time_entry(3, (1, "John Doe"), (1, "Project A"), 5.0, &day1),
+        ];
+
+        let mut time_entries = vec![
+            time_entry(2, (2, "Jane Doe"), (2, "Project B"), 2.0, &day2),
             time_entry(4, (1, "John Doe"), (1, "Project A"), 5.0, &day2),
         ];
+        time_entries.extend(day1_entries.clone());
 
         let report = Report::from_entries(&time_entries);
         let daily_report = report.get_report_for_date(&day1);
 
-        let expected_hours_per_project = vec![(1, Some(&9.0)), (2, None)];
-        for (project_id, hours) in expected_hours_per_project {
-            assert_eq!(daily_report.hours_per_project.get(&project_id), hours);
-        }
-
         let expected_total_hours = 9.0;
         assert_eq!(daily_report.total_hours, expected_total_hours);
 
-        let expected_projects = vec![(1, "Project A"), (2, "Project B")];
-        for (i, (project_id, project_name)) in daily_report.projects.iter().enumerate() {
-            assert_eq!(*project_id, expected_projects[i].0);
-            assert_eq!(*project_name, expected_projects[i].1);
-        }
+        assert_eq!(daily_report.entries, day1_entries);
     }
 
     fn time_entry(

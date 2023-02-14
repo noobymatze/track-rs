@@ -16,7 +16,7 @@ pub struct Named {
     pub name: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct TimeEntry {
     pub id: i32,
     pub user: Named,

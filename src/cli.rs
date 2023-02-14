@@ -159,7 +159,7 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
             let time_entries = client.get_time_entries(from, to)?;
             match (week, project) {
                 (_, true) => {
-                    let table = track::view::view_hours_per_project(time_entries)?;
+                    let table = track::view::print_table(&time_entries.time_entries)?;
                     print_stdout(table)?;
                     Ok(())
                 }

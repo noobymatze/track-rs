@@ -60,13 +60,13 @@ impl Client {
     }
 
     pub fn create_time_entry(&self, entry: NewTimeEntry) -> anyhow::Result<()> {
-        let key = self.config.key.clone();
-        let url = self.config.base_url.clone().join("time_entries.json")?;
+        let key = &self.config.key;
+        let url = &self.config.base_url.join("time_entries.json")?;
         let new_entry = NewTimeEntries { time_entry: entry };
 
         let _result = self
             .client
-            .post(url)
+            .post(url.clone())
             .json(&new_entry)
             .header("X-Redmine-API-Key", key)
             .send()?

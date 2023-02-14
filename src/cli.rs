@@ -1,6 +1,7 @@
 use crate::redmine::{
     Activities, Activity, CustomField, CustomValue, NewTimeEntry, Project, Projects,
 };
+use crate::track::report::Report;
 use crate::track::Config;
 use crate::{redmine, track};
 use anyhow::anyhow;
@@ -169,7 +170,9 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
                     Ok(())
                 }
                 _ => {
-                    let table = track::view::view_time_entries(time_entries)?;
+                    let report = Report::from_entries(&time_entries.time_entries);
+                    let daily_report = report.get_report_for_date(&today.date_naive());
+                    let table = daily_report.to_table_struct();
                     print_stdout(table)?;
                     Ok(())
                 }

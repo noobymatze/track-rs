@@ -19,46 +19,6 @@ impl DisplayExt for f64 {
     }
 }
 
-pub fn view_time_entries(time_entries: TimeEntries) -> Result<TableStruct, anyhow::Error> {
-    let mut entries = time_entries.time_entries;
-    entries.sort_by_key(|t| t.id);
-
-    let total_hours: f64 = entries.iter().map(|t| t.hours).sum();
-    let header_row = vec![
-        "Project".cell().bold(true),
-        "Issue".cell().bold(true),
-        format!("Hours (∑ {})", total_hours).cell().bold(true),
-        "Comment".cell().bold(true),
-    ]
-    .row();
-
-    let mut rows = vec![header_row];
-    for entry in entries.iter() {
-        rows.push(view_time_entry(entry));
-    }
-
-    Ok(rows.table())
-}
-
-fn view_time_entry(entry: &TimeEntry) -> RowStruct {
-    let project = entry.project.clone().name;
-    let issue = entry
-        .issue
-        .clone()
-        .map(|i| format!("#{}", i.id))
-        .unwrap_or("".to_string());
-
-    let comment = entry.comments.clone();
-
-    vec![
-        project.unwrap_or("".into()).cell(),
-        issue.cell(),
-        entry.hours.to_string().cell().justify(Justify::Right),
-        comment.unwrap_or("".into()).cell(),
-    ]
-    .row()
-}
-
 pub fn view_weekday_working_hours(time_entries: TimeEntries) -> Result<TableStruct, anyhow::Error> {
     let mut map = HashMap::new();
     for t in time_entries.time_entries {

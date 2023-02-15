@@ -161,7 +161,11 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
                     let report = Report::from_entries(&time_entries.time_entries);
                     let daily_report = report.get_report_for_date(&today.date_naive());
                     let table = daily_report.to_table_struct();
-                    print_stdout(table)?;
+                    print_stdout(
+                        table
+                            .dimmed(true)
+                            .foreground_color(Some(Color::Rgb(150, 150, 150))),
+                    )?;
                     Ok(())
                 }
             }

@@ -1,5 +1,4 @@
 pub mod report;
-pub mod view;
 
 use serde::{Deserialize, Serialize};
 use std::fs::File;

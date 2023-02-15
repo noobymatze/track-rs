@@ -1,18 +1,20 @@
+use std::str::FromStr;
+
+use anyhow::anyhow;
+use chrono::{Datelike, Duration};
+use clap::Parser;
+use cli_table::{print_stdout, Color, Style};
+use dialoguer::theme::ColorfulTheme;
+use dialoguer::{Confirm, Input, Password};
+use regex::Regex;
+use url::Url;
+
+use crate::redmine;
 use crate::redmine::{
     Activities, Activity, CustomField, CustomValue, NewTimeEntry, Project, Projects,
 };
 use crate::track::report::Report;
 use crate::track::Config;
-use crate::{redmine, track};
-use anyhow::anyhow;
-use chrono::{Datelike, Duration};
-use clap::Parser;
-use cli_table::print_stdout;
-use dialoguer::theme::ColorfulTheme;
-use dialoguer::{Confirm, Input, Password};
-use regex::Regex;
-use std::str::FromStr;
-use url::Url;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(name = "track", about = "Track your time with redmine.")]
@@ -54,13 +56,6 @@ enum Command {
             help = "Show a summary of the weekly activity."
         )]
         week: bool,
-
-        #[arg(
-            long = "project",
-            short = 'p',
-            help = "Show a summary of the weekly activity per project."
-        )]
-        project: bool,
     },
 }
 
@@ -132,14 +127,7 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
 
             Ok(())
         }
-        (
-            Some(Command::List {
-                yesterday,
-                week,
-                project,
-            }),
-            Some(config),
-        ) => {
+        (Some(Command::List { yesterday, week }), Some(config)) => {
             let client = redmine::request::Client::new(config);
             let today = chrono::Local::now();
             let day = match yesterday {
@@ -158,18 +146,18 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
             };
 
             let time_entries = client.get_time_entries(from, to)?;
-            match (week, project) {
-                (_, true) => {
-                    let table = track::view::print_table(&time_entries.time_entries)?;
-                    print_stdout(table)?;
+            match week {
+                true => {
+                    let report = Report::from_entries(&time_entries.time_entries);
+                    let table = report.to_table_struct(&today.date_naive());
+                    print_stdout(
+                        table
+                            .dimmed(true)
+                            .foreground_color(Some(Color::Rgb(150, 150, 150))),
+                    )?;
                     Ok(())
                 }
-                (true, _) => {
-                    let table = track::view::view_weekday_working_hours(time_entries)?;
-                    print_stdout(table)?;
-                    Ok(())
-                }
-                _ => {
+                false => {
                     let report = Report::from_entries(&time_entries.time_entries);
                     let daily_report = report.get_report_for_date(&today.date_naive());
                     let table = daily_report.to_table_struct();

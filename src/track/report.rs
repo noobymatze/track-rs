@@ -1,7 +1,8 @@
-use chrono::NaiveDate;
+use std::collections::HashMap;
+
+use chrono::{Datelike, Days, NaiveDate};
 use cli_table::format::Justify;
 use cli_table::{Cell, Color, Row, Style, Table, TableStruct};
-use std::collections::HashMap;
 
 use crate::redmine::TimeEntry;
 
@@ -61,6 +62,13 @@ impl Report {
         }
     }
 
+    pub fn get_or_zero(&self, day: &NaiveDate, project_id: i32) -> f64 {
+        *self
+            .cumulative_hours
+            .get(&(*day, project_id))
+            .unwrap_or(&0.0)
+    }
+
     /// Returns a new [DailyReport] for the given [needle].
     ///
     /// If there are no time entries for the day, will return an
@@ -74,6 +82,85 @@ impl Report {
             total_hours,
             entries,
         }
+    }
+
+    pub fn to_table_struct(&self, needle: &NaiveDate) -> TableStruct {
+        let monday = needle
+            .monday_of_week()
+            .expect(format!("The monday of {} should exist.", needle).as_str());
+        let sunday = needle
+            .sunday_of_week()
+            .expect(format!("The sunday of {} should exist.", needle).as_str());
+
+        let days: Vec<NaiveDate> = monday
+            .iter_days()
+            .take_while(|day| Some(*day) != sunday.succ_opt())
+            .collect();
+
+        let fg = Some(Color::Rgb(220, 220, 220));
+
+        let mut headers = vec!["".cell().bold(true), "∑".cell().justify(Justify::Right)];
+        for day in &days {
+            headers.push(
+                day.weekday()
+                    .to_string()
+                    .cell()
+                    .foreground_color(fg.clone()),
+            );
+        }
+
+        let mut rows = vec![];
+        rows.push(headers.row());
+        let mut total_hours: f64 = 0.0;
+        for (project_id, project) in &self.projects {
+            let mut cols = vec![];
+            cols.push(project.cell().foreground_color(fg.clone()));
+            let project_hours = self.hours_per_project.get(&project_id).unwrap_or(&0.0);
+            total_hours += project_hours;
+            cols.push(
+                project_hours
+                    .fmt_zero_empty()
+                    .cell()
+                    .justify(Justify::Right)
+                    .foreground_color(fg.clone()),
+            );
+            for day in &days {
+                let hours = self.get_or_zero(day, *project_id);
+                cols.push(
+                    hours
+                        .fmt_zero_empty()
+                        .cell()
+                        .foreground_color(fg.clone())
+                        .justify(Justify::Right),
+                )
+            }
+            rows.push(cols.row());
+        }
+        let mut last_row = vec!["∑".cell()];
+        last_row.push(
+            total_hours
+                .cell()
+                .justify(Justify::Right)
+                .foreground_color(Some(Color::Cyan)),
+        );
+        for day in &days {
+            let hours_at_day = *self.hours_at.get(day).unwrap_or(&0.0);
+            let color = match hours_at_day {
+                _ if hours_at_day <= 8.0 => Color::Green,
+                _ if hours_at_day <= 10.0 => Color::Yellow,
+                _ => Color::Red,
+            };
+            last_row.push(
+                hours_at_day
+                    .fmt_zero_empty()
+                    .cell()
+                    .justify(Justify::Right)
+                    .foreground_color(Some(color)),
+            );
+        }
+
+        rows.push(last_row.row());
+        rows.table()
     }
 }
 
@@ -159,6 +246,38 @@ impl DailyReport {
         }
 
         rows.table()
+    }
+}
+
+trait NaiveDateExt {
+    fn monday_of_week(&self) -> Option<NaiveDate>;
+
+    fn sunday_of_week(&self) -> Option<NaiveDate>;
+}
+
+impl NaiveDateExt for NaiveDate {
+    fn monday_of_week(&self) -> Option<NaiveDate> {
+        let diff = self.weekday().num_days_from_monday();
+        self.checked_sub_days(Days::new(diff as u64))
+    }
+
+    fn sunday_of_week(&self) -> Option<NaiveDate> {
+        let diff = self.weekday().num_days_from_sunday();
+        self.checked_add_days(Days::new((diff + 1) as u64))
+    }
+}
+
+trait DisplayExt {
+    fn fmt_zero_empty(self) -> String;
+}
+
+impl DisplayExt for f64 {
+    fn fmt_zero_empty(self) -> String {
+        if self == 0.0 {
+            "".into()
+        } else {
+            self.to_string()
+        }
     }
 }
 

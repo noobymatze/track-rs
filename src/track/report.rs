@@ -87,10 +87,10 @@ impl Report {
     pub fn to_table_struct(&self, needle: &NaiveDate) -> TableStruct {
         let monday = needle
             .monday_of_week()
-            .expect(format!("The monday of {} should exist.", needle).as_str());
+            .unwrap_or_else(|| panic!("The monday of {needle} should exist."));
         let sunday = needle
             .sunday_of_week()
-            .expect(format!("The sunday of {} should exist.", needle).as_str());
+            .unwrap_or_else(|| panic!("The sunday of {needle} should exist."));
 
         let days: Vec<NaiveDate> = monday
             .iter_days()
@@ -105,7 +105,7 @@ impl Report {
                 day.weekday()
                     .to_string()
                     .cell()
-                    .foreground_color(fg.clone()),
+                    .foreground_color(fg),
             );
         }
 
@@ -120,7 +120,7 @@ impl Report {
         projects.sort_by(|(_, a), (_, b)| a.cmp(b));
         for (project_id, project) in projects {
             let mut cols = vec![];
-            cols.push(project.cell().foreground_color(fg.clone()));
+            cols.push(project.cell().foreground_color(fg));
             let project_hours = self.hours_per_project.get(&project_id).unwrap_or(&0.0);
             total_hours += project_hours;
             cols.push(
@@ -128,7 +128,7 @@ impl Report {
                     .fmt_zero_empty()
                     .cell()
                     .justify(Justify::Right)
-                    .foreground_color(fg.clone()),
+                    .foreground_color(fg),
             );
             for day in &days {
                 let hours = self.get_or_zero(day, project_id);
@@ -136,7 +136,7 @@ impl Report {
                     hours
                         .fmt_zero_empty()
                         .cell()
-                        .foreground_color(fg.clone())
+                        .foreground_color(fg)
                         .justify(Justify::Right),
                 )
             }
@@ -246,7 +246,7 @@ impl DailyReport {
                     .foreground_color(Some(Color::Cyan))
                     .justify(Justify::Right),
                 format!("{:.2}", entry.hours).cell().justify(Justify::Right),
-                format!("{}", entry.comments.as_ref().unwrap_or(&"".into()))
+                entry.comments.as_ref().unwrap_or(&"".into()).to_string()
                     .cell()
                     .foreground_color(Some(Color::Rgb(230, 230, 230))),
             ];

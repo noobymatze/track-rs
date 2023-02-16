@@ -101,12 +101,7 @@ impl Report {
 
         let mut headers = vec!["".cell().bold(true), "∑".cell().justify(Justify::Right)];
         for day in &days {
-            headers.push(
-                day.weekday()
-                    .to_string()
-                    .cell()
-                    .foreground_color(fg),
-            );
+            headers.push(day.weekday().to_string().cell().foreground_color(fg));
         }
 
         let mut rows = vec![];
@@ -246,7 +241,11 @@ impl DailyReport {
                     .foreground_color(Some(Color::Cyan))
                     .justify(Justify::Right),
                 format!("{:.2}", entry.hours).cell().justify(Justify::Right),
-                entry.comments.as_ref().unwrap_or(&"".into()).to_string()
+                entry
+                    .comments
+                    .as_ref()
+                    .unwrap_or(&"".into())
+                    .to_string()
                     .cell()
                     .foreground_color(Some(Color::Rgb(230, 230, 230))),
             ];
@@ -271,7 +270,7 @@ impl NaiveDateExt for NaiveDate {
 
     fn sunday_of_week(&self) -> Option<NaiveDate> {
         let diff = self.weekday().num_days_from_sunday();
-        self.checked_add_days(Days::new((diff + 1) as u64))
+        self.checked_add_days(Days::new((7 - diff) as u64))
     }
 }
 
@@ -294,6 +293,13 @@ mod tests {
     use crate::redmine::Named;
 
     use super::*;
+
+    #[test]
+    fn test_days_till_sunday() {
+        let monday = NaiveDate::from_ymd_opt(2023, 2, 16).unwrap();
+        let funday = NaiveDate::from_ymd_opt(2023, 2, 19).unwrap();
+        assert_eq!(monday.sunday_of_week(), Some(funday));
+    }
 
     #[test]
     fn test_calculate() {

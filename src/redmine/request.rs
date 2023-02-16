@@ -75,7 +75,23 @@ impl Client {
             return Ok(());
         }
 
-        Ok(())
+        match response.text() {
+            Ok(value) => println!("{}", value),
+            Err(err) => eprintln!("{:?}", err),
+        }
+
+        let msg = format!(
+            "{}\n\n{}",
+            response.status(),
+            response
+                .headers()
+                .iter()
+                .map(|(name, value)| format!("{:?}: {:?}", name, value))
+                .collect::<Vec<String>>()
+                .join("\n"),
+        );
+
+        Err(msg.into())
     }
 
     fn get<T>(&self, path: &str, query: Vec<(&str, String)>) -> anyhow::Result<T>

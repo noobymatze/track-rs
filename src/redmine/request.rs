@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use reqwest::blocking;
 
 use crate::redmine::{
@@ -75,23 +76,22 @@ impl Client {
             return Ok(());
         }
 
-        match response.text() {
+        let status = &response.status();
+        let headers = response
+            .headers()
+            .iter()
+            .map(|(name, value)| format!("{:?}: {:?}", name, value))
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        match &response.text() {
             Ok(value) => println!("{}", value),
             Err(err) => eprintln!("{:?}", err),
         }
 
-        let msg = format!(
-            "{}\n\n{}",
-            response.status(),
-            response
-                .headers()
-                .iter()
-                .map(|(name, value)| format!("{:?}: {:?}", name, value))
-                .collect::<Vec<String>>()
-                .join("\n"),
-        );
+        let msg = format!("{}\n\n{}", status, headers);
 
-        Err(msg.into())
+        Err(anyhow!(msg))
     }
 
     fn get<T>(&self, path: &str, query: Vec<(&str, String)>) -> anyhow::Result<T>

@@ -112,7 +112,13 @@ impl Report {
         let mut rows = vec![];
         rows.push(headers.row());
         let mut total_hours: f64 = 0.0;
-        for (project_id, project) in &self.projects {
+        let mut projects = self
+            .projects
+            .iter()
+            .map(|(a, b)| (*a, b.clone()))
+            .collect::<Vec<(i32, String)>>();
+        projects.sort_by(|(_, a), (_, b)| a.cmp(b));
+        for (project_id, project) in projects {
             let mut cols = vec![];
             cols.push(project.cell().foreground_color(fg.clone()));
             let project_hours = self.hours_per_project.get(&project_id).unwrap_or(&0.0);
@@ -125,7 +131,7 @@ impl Report {
                     .foreground_color(fg.clone()),
             );
             for day in &days {
-                let hours = self.get_or_zero(day, *project_id);
+                let hours = self.get_or_zero(day, project_id);
                 cols.push(
                     hours
                         .fmt_zero_empty()
@@ -226,7 +232,9 @@ impl DailyReport {
 
         let mut rows = vec![];
         rows.push(headers.row());
-        for entry in &self.entries {
+        let mut actual_entries = self.entries.clone();
+        actual_entries.reverse();
+        for entry in &actual_entries {
             let cells = vec![
                 entry.project.name.as_ref().unwrap_or(&"".into()).cell(),
                 entry

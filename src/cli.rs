@@ -121,7 +121,7 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
                 spent_on: today.format("%Y-%m-%d").to_string(),
             };
 
-            let _result = client.create_time_entry(new_entry)?;
+            client.create_time_entry(new_entry)?;
 
             println!("Entry successfully created");
 
@@ -173,7 +173,7 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
         (Some(Command::Login { user, base_url }), _) => {
             let pw = Password::new().with_prompt("Password").interact()?;
             let client = reqwest::blocking::Client::new();
-            let url = Url::parse(&*base_url)?;
+            let url = Url::parse(&base_url)?;
             let copied_url = url.clone();
             let user = redmine::request::login(client, url, user, pw)?;
             let config = Config::new(copied_url, user)?;
@@ -242,7 +242,7 @@ fn ask_for_issue() -> Option<i32> {
         .interact()
         .unwrap();
 
-    i32::from_str(&*i).ok()
+    i32::from_str(&i).ok()
 }
 
 fn ask_for_comment() -> String {
@@ -286,9 +286,9 @@ fn analyze_comments(input: String) -> Option<(chrono::NaiveTime, chrono::NaiveTi
         Some(re) => re,
     };
 
-    let m = re.find(&*input)?;
+    let m = re.find(&input)?;
     let filtered: String = m.as_str().chars().filter(|c| !c.is_whitespace()).collect();
-    let result: Vec<&str> = filtered.as_str().split("-").collect();
+    let result: Vec<&str> = filtered.as_str().split('-').collect();
     let left = chrono::NaiveTime::parse_from_str(result[0], "%H:%M").ok();
     let right = chrono::NaiveTime::parse_from_str(result[1], "%H:%M").ok();
     left.and_then(|l| right.map(|r| (l, r)))

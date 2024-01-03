@@ -60,6 +60,21 @@ pub struct Project {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Issues {
+    pub issues: Vec<Issue>,
+    pub offset: i32,
+    pub limit: i32,
+    pub total_count: i32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Issue {
+    pub id: i32,
+    pub subject: String,
+    pub project: Named,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Activities {
     #[serde(rename = "time_entry_activities")]
     pub activities: Vec<Activity>,

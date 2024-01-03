@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use reqwest::blocking;
 
 use crate::redmine::{
-    Activities, CustomFields, NewTimeEntries, NewTimeEntry, Projects, TimeEntries, User,
+    Activities, CustomFields, Issues, NewTimeEntries, NewTimeEntry, Projects, TimeEntries, User,
     UserResponse,
 };
 use crate::track::Config;
@@ -43,6 +43,13 @@ impl Client {
         };
 
         self.get("time_entries.json", query)
+    }
+
+    pub fn get_issues(&self, issue_ids: &Vec<String>) -> anyhow::Result<Issues> {
+        let issue_ids = issue_ids.join(",");
+        let query = vec![("issue_id", issue_ids), ("limit", 100.to_string())];
+
+        self.get("issues.json", query)
     }
 
     pub fn get_projects(&self) -> anyhow::Result<Projects> {

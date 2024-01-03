@@ -4,28 +4,41 @@ use chrono::{Datelike, Days, NaiveDate};
 use cli_table::format::Justify;
 use cli_table::{Cell, Color, Row, Style, Table, TableStruct};
 
-use crate::redmine::TimeEntry;
+use crate::redmine::{Issue, TimeEntry};
 
 /// A [Report] represents the result of cumulating a [Vec] of [TimeEntry]s.
 #[derive(Debug)]
 pub struct Report {
     projects: HashMap<i32, String>,
     cumulative_hours: HashMap<(NaiveDate, i32), f64>,
+    cumulative_issue_hours: HashMap<(NaiveDate, i32), f64>,
     entries_per_day: HashMap<NaiveDate, Vec<TimeEntry>>,
     hours_per_project: HashMap<i32, f64>,
     hours_at: HashMap<NaiveDate, f64>,
+    hours_per_issue: HashMap<i32, f64>,
+    issues_per_project: HashMap<i32, Vec<(i32, String)>>,
 }
 
 impl Report {
     /// Creates a new [Report] from a vector of time entries.
     ///
     /// If the given time_entries are empty, the report will of course be empty too.
-    pub fn from_entries(time_entries: &Vec<TimeEntry>) -> Self {
+    pub fn from_entries(time_entries: &Vec<TimeEntry>, issues: &Vec<Issue>) -> Self {
+        let mut hours_per_issue = HashMap::new();
         let mut cumulative_hours = HashMap::new();
+        let mut cumulative_issue_hours = HashMap::new();
         let mut projects = HashMap::new();
         let mut hours_per_project = HashMap::new();
         let mut hours_at = HashMap::new();
         let mut entries_per_day = HashMap::new();
+
+        let mut issues_per_project = HashMap::new();
+        for issue in issues {
+            issues_per_project
+                .entry(issue.project.id)
+                .or_insert(vec![])
+                .push((issue.id, issue.subject.clone()));
+        }
 
         for time_entry in time_entries {
             let spent_on = NaiveDate::parse_from_str(&time_entry.spent_on, "%Y-%m-%d").unwrap();
@@ -44,6 +57,13 @@ impl Report {
 
             *hours_at.entry(spent_on).or_insert(0.0) += time_entry.hours;
 
+            if let Some(issue_id) = time_entry.issue.as_ref().map(|t| t.id) {
+                *hours_per_issue.entry(issue_id).or_insert(0.0) += time_entry.hours;
+
+                let key = (spent_on, issue_id);
+                *cumulative_issue_hours.entry(key).or_insert(0.0) += time_entry.hours;
+            }
+
             projects.entry(time_entry.project.id).or_insert(
                 time_entry
                     .project
@@ -59,6 +79,9 @@ impl Report {
             cumulative_hours,
             hours_per_project,
             hours_at,
+            hours_per_issue,
+            issues_per_project,
+            cumulative_issue_hours,
         }
     }
 
@@ -66,6 +89,13 @@ impl Report {
         *self
             .cumulative_hours
             .get(&(*day, project_id))
+            .unwrap_or(&0.0)
+    }
+
+    pub fn get_issue_or_zero(&self, day: &NaiveDate, issue_id: i32) -> f64 {
+        *self
+            .cumulative_issue_hours
+            .get(&(*day, issue_id))
             .unwrap_or(&0.0)
     }
 
@@ -84,7 +114,7 @@ impl Report {
         }
     }
 
-    pub fn to_table_struct(&self, needle: &NaiveDate) -> TableStruct {
+    pub fn to_table_struct(&self, needle: &NaiveDate, show_issues: bool) -> TableStruct {
         let monday = needle
             .monday_of_week()
             .unwrap_or_else(|| panic!("The monday of {needle} should exist."));
@@ -115,7 +145,7 @@ impl Report {
         projects.sort_by(|(_, a), (_, b)| a.cmp(b));
         for (project_id, project) in projects {
             let mut cols = vec![];
-            cols.push(project.cell().foreground_color(fg));
+            cols.push(project.cell().foreground_color(fg).bold(true));
             let project_hours = self.hours_per_project.get(&project_id).unwrap_or(&0.0);
             total_hours += project_hours;
             cols.push(
@@ -123,7 +153,7 @@ impl Report {
                     .fmt_zero_empty()
                     .cell()
                     .justify(Justify::Right)
-                    .foreground_color(fg),
+                    .foreground_color(Some(Color::Cyan)),
             );
             for day in &days {
                 let hours = self.get_or_zero(day, project_id);
@@ -136,6 +166,37 @@ impl Report {
                 )
             }
             rows.push(cols.row());
+
+            if show_issues {
+                for (issue, subject) in self.issues_per_project.get(&project_id).unwrap_or(&vec![])
+                {
+                    let mut cols = vec![];
+                    cols.push(
+                        format!("  [#{}] {}", issue, subject)
+                            .cell()
+                            .foreground_color(fg),
+                    );
+                    let issue_hours = self.hours_per_issue.get(issue).unwrap_or(&0.0);
+                    cols.push(
+                        issue_hours
+                            .fmt_zero_empty()
+                            .cell()
+                            .justify(Justify::Right)
+                            .foreground_color(fg),
+                    );
+                    for day in &days {
+                        let hours = self.get_issue_or_zero(day, *issue);
+                        cols.push(
+                            hours
+                                .fmt_zero_empty()
+                                .cell()
+                                .foreground_color(fg)
+                                .justify(Justify::Right),
+                        )
+                    }
+                    rows.push(cols.row());
+                }
+            }
         }
         let mut last_row = vec!["∑".cell()];
         last_row.push(
@@ -313,7 +374,7 @@ mod tests {
             time_entry(3, (1, "John Doe"), (1, "Project A"), 5.0, &day3),
         ];
 
-        let result = Report::from_entries(&time_entries);
+        let result = Report::from_entries(&time_entries, &vec![]);
 
         assert_eq!(result.projects.get(&1), Some(&"Project A".to_string()));
         assert_eq!(result.projects.get(&2), Some(&"Project B".to_string()));
@@ -337,7 +398,7 @@ mod tests {
             time_entry(3, (1, "John Doe"), (1, "Project A"), 5.0, &day3),
         ];
 
-        let result = Report::from_entries(&time_entries);
+        let result = Report::from_entries(&time_entries, &vec![]);
 
         let sum_of_hours_per_project = result.hours_per_project.values().sum::<f64>();
         let sum_of_hours_per_weekday = result.hours_at.values().sum::<f64>();
@@ -361,7 +422,7 @@ mod tests {
         ];
         time_entries.extend(day1_entries.clone());
 
-        let report = Report::from_entries(&time_entries);
+        let report = Report::from_entries(&time_entries, &vec![]);
         let daily_report = report.get_report_for_date(&day1);
 
         let expected_total_hours = 9.0;

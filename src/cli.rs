@@ -43,10 +43,20 @@ enum Command {
         about = "List your time entries for today, yesterday or this week."
     )]
     List {
+        #[arg(long = "issues", short = 'i', help = "Show weekly overview.")]
+        with_issues: bool,
+
+        #[arg(
+            long = "previous",
+            short = 'p',
+            help = "Show time entries from the previous week or day."
+        )]
+        previous: bool,
+
         #[arg(
             long = "yesterday",
             short = 'y',
-            help = "Show only time entries for yesterday."
+            help = "Show only time entries for yesterday. (DEPRECATED, use -p) "
         )]
         yesterday: bool,
 
@@ -127,7 +137,15 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
 
             Ok(())
         }
-        (Some(Command::List { yesterday, week }), Some(config)) => {
+        (
+            Some(Command::List {
+                yesterday,
+                week,
+                previous: _,
+                with_issues,
+            }),
+            Some(config),
+        ) => {
             let client = redmine::request::Client::new(config);
             let today = chrono::Local::now();
             let day = match yesterday {
@@ -148,8 +166,16 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
             let time_entries = client.get_time_entries(from, to)?;
             match week {
                 true => {
-                    let report = Report::from_entries(&time_entries.time_entries);
-                    let table = report.to_table_struct(&today.date_naive());
+                    let issue_ids = &time_entries
+                        .time_entries
+                        .iter()
+                        .filter_map(|t| t.issue.as_ref().map(|i| i.id))
+                        .map(|id| id.to_string())
+                        .collect::<Vec<String>>();
+                    let issues = client.get_issues(&issue_ids)?;
+                    let report = Report::from_entries(&time_entries.time_entries, &issues.issues);
+
+                    let table = report.to_table_struct(&today.date_naive(), with_issues);
                     print_stdout(
                         table
                             .dimmed(true)
@@ -158,7 +184,7 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
                     Ok(())
                 }
                 false => {
-                    let report = Report::from_entries(&time_entries.time_entries);
+                    let report = Report::from_entries(&time_entries.time_entries, &vec![]);
                     let daily_report = report.get_report_for_date(&today.date_naive());
                     let table = daily_report.to_table_struct();
                     print_stdout(

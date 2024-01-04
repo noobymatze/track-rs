@@ -47,7 +47,11 @@ impl Client {
 
     pub fn get_issues(&self, issue_ids: &Vec<String>) -> anyhow::Result<Issues> {
         let issue_ids = issue_ids.join(",");
-        let query = vec![("issue_id", issue_ids), ("limit", 100.to_string())];
+        let query = vec![
+            ("issue_id", issue_ids),
+            ("status_id", String::from("*")),
+            ("limit", 100.to_string()),
+        ];
 
         self.get("issues.json", query)
     }

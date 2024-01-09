@@ -5,7 +5,7 @@ use std::fs::File;
 
 use std::io::{BufReader, BufWriter};
 
-use crate::redmine::User;
+use crate::redmine::{CustomField, User};
 use crate::track::Error::{ApiKeyMissing, HomeDirNotFound};
 use std::io;
 use thiserror::Error;
@@ -21,6 +21,8 @@ pub struct Config {
     pub base_url: Url,
     pub login: String,
     pub user_id: i32,
+    #[serde(default)]
+    pub custom_fields: Vec<CustomField>,
 }
 
 /// This type represents any error, that can happen while loading or storing
@@ -52,6 +54,7 @@ impl Config {
             base_url,
             login: user.login,
             user_id: user.id,
+            custom_fields: vec![],
         };
 
         Ok(config)

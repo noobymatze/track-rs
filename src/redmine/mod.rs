@@ -92,7 +92,7 @@ pub struct CustomFields {
     pub custom_fields: Vec<CustomField>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash)]
 pub struct CustomField {
     pub id: i32,
     pub name: String,

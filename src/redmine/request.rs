@@ -68,6 +68,11 @@ impl Client {
     }
 
     pub fn get_custom_fields(&self) -> anyhow::Result<CustomFields> {
+        if !&self.config.custom_fields.is_empty() {
+            return Ok(CustomFields {
+                custom_fields: self.config.custom_fields.clone(),
+            });
+        }
         self.get("custom_fields.json", vec![])
     }
 

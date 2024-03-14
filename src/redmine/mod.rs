@@ -68,6 +68,21 @@ pub struct Issues {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Results {
+    pub results: Vec<Result>,
+    pub offset: i32,
+    pub limit: i32,
+    pub total_count: i32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Result {
+    pub id: i32,
+    pub title: String,
+    pub url: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Issue {
     pub id: i32,
     pub subject: String,

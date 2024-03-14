@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use chrono::{Datelike, Duration};
 use clap::Parser;
-use cli_table::{print_stdout, Color, Style};
+use cli_table::{print_stdout, Cell, Color, Row, Style, Table};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password};
 use regex::Regex;
@@ -27,6 +27,8 @@ pub struct Cli {
 
 #[derive(Parser, Debug, Clone)]
 enum Command {
+    #[command(name = "search", about = "Search for tickets")]
+    Search { query: String },
     #[command(name = "login", about = "Login to your account.")]
     Login {
         #[arg(long = "user", short = 'u', help = "The name of your Redmine user.")]
@@ -203,6 +205,37 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
         (_, None) => Err(anyhow!(
             "Hi, you don't seem to have logged in yet. Please use \n\n    `track login` \n\n"
         )),
+        (Some(Command::Search { query }), Some(config)) => {
+            let client = redmine::request::Client::new(config);
+
+            let results = client.search_tickets(query)?;
+
+            let headers = vec![
+                "Id".cell().bold(true),
+                "Title".cell().bold(true),
+                "Url".cell().bold(true),
+            ];
+            let mut rows = vec![];
+            rows.push(headers.row());
+            for result in results.results {
+                let cells = vec![
+                    result.id.to_string().cell(),
+                    result.title.cell(),
+                    result.url.cell(),
+                ];
+                rows.push(cells.row())
+            }
+
+            let table = rows.table();
+
+            print_stdout(
+                table
+                    .dimmed(true)
+                    .foreground_color(Some(Color::Rgb(150, 150, 150))),
+            )?;
+
+            Ok(())
+        }
     }
 }
 

@@ -1,13 +1,13 @@
 use anyhow::anyhow;
+use chrono::{DateTime, Local};
 use reqwest::blocking;
+use url::Url;
 
 use crate::redmine::{
-    Activities, CustomFields, Issues, NewTimeEntries, NewTimeEntry, Projects, TimeEntries, User,
-    UserResponse,
+    Activities, CustomFields, Issues, NewTimeEntries, NewTimeEntry, Projects, Results, TimeEntries,
+    User, UserResponse,
 };
 use crate::track::Config;
-use chrono::{DateTime, Local};
-use url::Url;
 
 #[derive(Debug)]
 pub struct Client {
@@ -54,6 +54,16 @@ impl Client {
         ];
 
         self.get("issues.json", query)
+    }
+    pub fn search_tickets(&self, query: String) -> anyhow::Result<Results> {
+        let query = vec![
+            ("q", [" ", &*query.to_string(), " "].join("")),
+            ("limit", 100.to_string()),
+            ("issues", 1.to_string()),
+            ("titles_only", 1.to_string()),
+        ];
+
+        self.get("search.json", query)
     }
 
     pub fn get_projects(&self) -> anyhow::Result<Projects> {

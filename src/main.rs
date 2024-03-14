@@ -2,9 +2,9 @@ mod cli;
 mod redmine;
 mod track;
 
-use clap::Parser;
 use crate::cli::Cli;
 use crate::track::Config;
+use clap::Parser;
 
 fn main() -> Result<(), anyhow::Error> {
     let options = Cli::parse();

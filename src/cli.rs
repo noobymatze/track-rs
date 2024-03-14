@@ -3,9 +3,9 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use chrono::{Datelike, Duration};
 use clap::Parser;
-use cli_table::{Cell, Color, print_stdout, Row, Style, Table};
-use dialoguer::{Confirm, Input, Password};
+use cli_table::{print_stdout, Cell, Color, Row, Style, Table};
 use dialoguer::theme::ColorfulTheme;
+use dialoguer::{Confirm, Input, Password};
 use regex::Regex;
 use url::Url;
 
@@ -13,8 +13,8 @@ use crate::redmine;
 use crate::redmine::{
     Activities, Activity, CustomField, CustomValue, NewTimeEntry, Project, Projects,
 };
-use crate::track::Config;
 use crate::track::report::Report;
+use crate::track::Config;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(name = "track", about = "Track your time with redmine.")]
@@ -28,39 +28,37 @@ pub struct Cli {
 #[derive(Parser, Debug, Clone)]
 enum Command {
     #[command(name = "search", about = "Search for tickets")]
-    Search {
-        query: String
-    },
+    Search { query: String },
     #[command(name = "login", about = "Login to your account.")]
     Login {
         #[arg(long = "user", short = 'u', help = "The name of your Redmine user.")]
         user: String,
         #[arg(
-        long = "baseUrl",
-        short = 'b',
-        help = "The baseUrl of your redmine installation."
+            long = "baseUrl",
+            short = 'b',
+            help = "The baseUrl of your redmine installation."
         )]
         base_url: String,
     },
     #[command(
-    name = "list",
-    about = "List your time entries for today, yesterday or this week."
+        name = "list",
+        about = "List your time entries for today, yesterday or this week."
     )]
     List {
         #[arg(long = "issues", short = 'i', help = "Show weekly overview.")]
         with_issues: bool,
 
         #[arg(
-        long = "previous",
-        short = 'p',
-        help = "Show time entries from the previous week or day."
+            long = "previous",
+            short = 'p',
+            help = "Show time entries from the previous week or day."
         )]
         previous: bool,
 
         #[arg(
-        long = "week",
-        short = 'w',
-        help = "Show a summary of the weekly activity."
+            long = "week",
+            short = 'w',
+            help = "Show a summary of the weekly activity."
         )]
         week: bool,
     },
@@ -136,10 +134,10 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
         }
         (
             Some(Command::List {
-                     week,
-                     previous,
-                     with_issues,
-                 }),
+                week,
+                previous,
+                with_issues,
+            }),
             Some(config),
         ) => {
             let client = redmine::request::Client::new(config);
@@ -212,7 +210,6 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
 
             let results = client.search_tickets(query)?;
 
-
             let headers = vec![
                 "Id".cell().bold(true),
                 "Title".cell().bold(true),
@@ -224,7 +221,7 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
                 let cells = vec![
                     result.id.to_string().cell(),
                     result.title.cell(),
-                    result.url.cell()
+                    result.url.cell(),
                 ];
                 rows.push(cells.row())
             }
@@ -281,7 +278,6 @@ fn select_activity(activities: Activities) -> Activity {
 
     activities.activities[selection].clone()
 }
-
 
 fn ask_for_issue() -> Option<i32> {
     let i: String = Input::new()

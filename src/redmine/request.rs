@@ -3,7 +3,10 @@ use chrono::{DateTime, Local};
 use reqwest::blocking;
 use url::Url;
 
-use crate::redmine::{Activities, CustomFields, Issues, NewTimeEntries, NewTimeEntry, Projects, Results, TimeEntries, User, UserResponse};
+use crate::redmine::{
+    Activities, CustomFields, Issues, NewTimeEntries, NewTimeEntry, Projects, Results, TimeEntries,
+    User, UserResponse,
+};
 use crate::track::Config;
 
 #[derive(Debug)]
@@ -54,7 +57,7 @@ impl Client {
     }
     pub fn search_tickets(&self, query: String) -> anyhow::Result<Results> {
         let query = vec![
-            ("q", [" ", &*query.to_string(), " "].join("") ),
+            ("q", [" ", &*query.to_string(), " "].join("")),
             ("limit", 100.to_string()),
             ("issues", 1.to_string()),
             ("titles_only", 1.to_string()),
@@ -118,8 +121,8 @@ impl Client {
     }
 
     fn get<T>(&self, path: &str, query: Vec<(&str, String)>) -> anyhow::Result<T>
-        where
-            T: serde::de::DeserializeOwned,
+    where
+        T: serde::de::DeserializeOwned,
     {
         let key = self.config.key.clone();
         let url = self.config.base_url.clone().join(path)?;

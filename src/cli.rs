@@ -10,6 +10,7 @@ use regex::Regex;
 use url::Url;
 
 use crate::redmine;
+use crate::redmine::request::Client;
 use crate::redmine::{
     Activities, Activity, CustomField, CustomValue, NewTimeEntry, Project, Projects,
 };
@@ -44,24 +45,27 @@ enum Command {
         name = "list",
         about = "List your time entries for today, yesterday or this week."
     )]
-    List {
-        #[arg(long = "issues", short = 'i', help = "Show weekly overview.")]
-        with_issues: bool,
+    List(ListArgs),
+}
 
-        #[arg(
-            long = "previous",
-            short = 'p',
-            help = "Show time entries from the previous week or day."
-        )]
-        previous: bool,
+#[derive(Parser, Debug, Clone)]
+struct ListArgs {
+    #[arg(long = "issues", short = 'i', help = "Show weekly overview.")]
+    with_issues: bool,
 
-        #[arg(
-            long = "week",
-            short = 'w',
-            help = "Show a summary of the weekly activity."
-        )]
-        week: bool,
-    },
+    #[arg(
+        long = "previous",
+        short = 'p',
+        help = "Show time entries from the previous week or day."
+    )]
+    previous: bool,
+
+    #[arg(
+        long = "week",
+        short = 'w',
+        help = "Show a summary of the weekly activity."
+    )]
+    week: bool,
 }
 
 pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
@@ -127,69 +131,20 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
             };
 
             client.create_time_entry(new_entry)?;
-
-            println!("Entry successfully created");
+            list(
+                &ListArgs {
+                    with_issues: false,
+                    previous: false,
+                    week: false,
+                },
+                &client,
+            )?;
 
             Ok(())
         }
-        (
-            Some(Command::List {
-                week,
-                previous,
-                with_issues,
-            }),
-            Some(config),
-        ) => {
+        (Some(Command::List(args)), Some(config)) => {
             let client = redmine::request::Client::new(config);
-            let day = match (previous, week) {
-                (true, false) => chrono::Local::now() - Duration::days(1),
-                (true, true) => chrono::Local::now() - Duration::days(7),
-                _ => chrono::Local::now(),
-            };
-
-            let (from, to) = match week {
-                true => {
-                    let weekday = day.weekday();
-                    let start = day - Duration::days(weekday.num_days_from_monday() as i64);
-                    let end = day + Duration::days(weekday.num_days_from_sunday() as i64);
-                    (start, Some(end))
-                }
-                false => (day, None),
-            };
-
-            let time_entries = client.get_time_entries(from, to)?;
-            match week {
-                true => {
-                    let issue_ids = &time_entries
-                        .time_entries
-                        .iter()
-                        .filter_map(|t| t.issue.as_ref().map(|i| i.id))
-                        .map(|id| id.to_string())
-                        .collect::<Vec<String>>();
-                    let issues = client.get_issues(&issue_ids)?;
-                    let report = Report::from_entries(&time_entries.time_entries, &issues.issues);
-
-                    let table = report
-                        .to_table_struct(&(from + Duration::days(1)).date_naive(), with_issues);
-                    print_stdout(
-                        table
-                            .dimmed(true)
-                            .foreground_color(Some(Color::Rgb(150, 150, 150))),
-                    )?;
-                    Ok(())
-                }
-                false => {
-                    let report = Report::from_entries(&time_entries.time_entries, &vec![]);
-                    let daily_report = report.get_report_for_date(&from.date_naive());
-                    let table = daily_report.to_table_struct();
-                    print_stdout(
-                        table
-                            .dimmed(true)
-                            .foreground_color(Some(Color::Rgb(150, 150, 150))),
-                    )?;
-                    Ok(())
-                }
-            }
+            list(&args, &client)
         }
         (Some(Command::Login { user, base_url }), _) => {
             let pw = Password::new().with_prompt("Password").interact()?;
@@ -234,6 +189,58 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
                     .foreground_color(Some(Color::Rgb(150, 150, 150))),
             )?;
 
+            Ok(())
+        }
+    }
+}
+
+fn list(args: &ListArgs, client: &Client) -> anyhow::Result<()> {
+    let day = match (args.previous, args.week) {
+        (true, false) => chrono::Local::now() - Duration::days(1),
+        (true, true) => chrono::Local::now() - Duration::days(7),
+        _ => chrono::Local::now(),
+    };
+
+    let (from, to) = match args.week {
+        true => {
+            let weekday = day.weekday();
+            let start = day - Duration::days(weekday.num_days_from_monday() as i64);
+            let end = day + Duration::days(weekday.num_days_from_sunday() as i64);
+            (start, Some(end))
+        }
+        false => (day, None),
+    };
+
+    let time_entries = client.get_time_entries(from, to)?;
+    match args.week {
+        true => {
+            let issue_ids = &time_entries
+                .time_entries
+                .iter()
+                .filter_map(|t| t.issue.as_ref().map(|i| i.id))
+                .map(|id| id.to_string())
+                .collect::<Vec<String>>();
+            let issues = client.get_issues(&issue_ids)?;
+            let report = Report::from_entries(&time_entries.time_entries, &issues.issues);
+
+            let table =
+                report.to_table_struct(&(from + Duration::days(1)).date_naive(), args.with_issues);
+            print_stdout(
+                table
+                    .dimmed(true)
+                    .foreground_color(Some(Color::Rgb(150, 150, 150))),
+            )?;
+            Ok(())
+        }
+        false => {
+            let report = Report::from_entries(&time_entries.time_entries, &vec![]);
+            let daily_report = report.get_report_for_date(&from.date_naive());
+            let table = daily_report.to_table_struct();
+            print_stdout(
+                table
+                    .dimmed(true)
+                    .foreground_color(Some(Color::Rgb(150, 150, 150))),
+            )?;
             Ok(())
         }
     }

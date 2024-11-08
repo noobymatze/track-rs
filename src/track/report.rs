@@ -280,6 +280,7 @@ impl DailyReport {
         let headers = vec![
             "Project".cell().bold(true),
             "Issue".cell().bold(true),
+            "Subject".cell().bold(true),
             format!("Hours (∑ {:.2})", self.total_hours)
                 .cell()
                 .bold(true),
@@ -293,6 +294,12 @@ impl DailyReport {
         for entry in &actual_entries {
             let cells = vec![
                 entry.project.name.as_ref().unwrap_or(&"".into()).cell(),
+                entry
+                    .issue
+                    .as_ref()
+                    .and_then(|x| x.name.clone())
+                    .unwrap_or("".to_owned())
+                    .cell(),
                 entry
                     .issue
                     .as_ref()

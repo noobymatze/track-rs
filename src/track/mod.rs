@@ -1,15 +1,170 @@
 pub mod report;
+mod ui;
 
+use chrono::{Datelike, Duration};
+use cli_table::{print_stdout, Cell, Color, Row, Style, Table};
+use report::Report;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 
 use std::io::{BufReader, BufWriter};
 
-use crate::redmine::{CustomField, User};
+use crate::redmine::request::Client;
+use crate::redmine::{CustomField, NewTimeEntry, User};
 use crate::track::Error::{ApiKeyMissing, HomeDirNotFound};
 use std::io;
 use thiserror::Error;
 use url::Url;
+
+/// Track a new value of the time.
+pub fn track(client: &Client, yesterday: bool) -> Result<(), anyhow::Error> {
+    let (project, issue) = match ui::ask_for_issue() {
+        None => {
+            let projects = client.get_projects()?;
+            let project = ui::select_project(projects);
+            (project, None)
+        }
+
+        issue => (None, issue),
+    };
+
+    let comment = ui::ask_for_comment();
+    let hours = match ui::analyze_comments(comment.clone()) {
+        Some((from, to)) => {
+            let duration = to - from;
+            let hours = duration.num_hours() as f64;
+            let remaining_minutes = if hours <= 0.0 {
+                duration.num_minutes()
+            } else {
+                duration.num_minutes() % (duration.num_hours() * 60)
+            };
+
+            let minutes: f64 = (remaining_minutes as f64 / 15.0) * 0.25;
+            hours + minutes
+        }
+        None => ui::ask_for_hours(),
+    };
+    let activities = client.get_activities()?;
+    let activity = ui::select_activity(activities);
+    let custom_fields = client.get_custom_fields()?;
+
+    let mut custom_values = vec![];
+    for field in custom_fields.custom_fields {
+        if field.is_for_time_entry() && field.is_required() {
+            if let Some(value) = ui::ask_for_custom_field(field)? {
+                custom_values.push(value)
+            }
+        }
+    }
+
+    let today = match yesterday {
+        true => {
+            println!("Creating TimeEntry for yesterday");
+            chrono::Local::now() - Duration::days(1)
+        }
+        false => chrono::Local::now(),
+    };
+
+    let new_entry = NewTimeEntry {
+        issue_id: issue,
+        project_id: project.map(|p| p.id),
+        hours,
+        comments: comment,
+        activity_id: activity.id,
+        custom_fields: custom_values,
+        spent_on: today.format("%Y-%m-%d").to_string(),
+    };
+
+    client.create_time_entry(new_entry)?;
+    list(&client, false, false, false)?;
+
+    Ok(())
+}
+
+/// Search for the given [`query`] using the given [`Config`] and
+/// display the result to the console.
+pub fn search(client: &Client, query: String) -> anyhow::Result<()> {
+    let results = client.search_tickets(query)?;
+
+    let headers = vec![
+        "Id".cell().bold(true),
+        "Title".cell().bold(true),
+        "Url".cell().bold(true),
+    ];
+    let mut rows = vec![];
+    rows.push(headers.row());
+    for result in results.results {
+        let cells = vec![
+            result.id.to_string().cell(),
+            result.title.cell(),
+            result.url.cell(),
+        ];
+        rows.push(cells.row())
+    }
+
+    let table = rows.table();
+
+    print_stdout(
+        table
+            .dimmed(true)
+            .foreground_color(Some(Color::Rgb(150, 150, 150))),
+    )?;
+
+    Ok(())
+}
+
+/// List the current.
+pub fn list(client: &Client, with_issues: bool, previous: bool, week: bool) -> anyhow::Result<()> {
+    let day = match (previous, week) {
+        (true, false) => chrono::Local::now() - Duration::days(1),
+        (true, true) => chrono::Local::now() - Duration::days(7),
+        _ => chrono::Local::now(),
+    };
+
+    let (from, to) = match week {
+        true => {
+            let weekday = day.weekday();
+            let start = day - Duration::days(weekday.num_days_from_monday() as i64);
+            let end = day + Duration::days(weekday.num_days_from_sunday() as i64);
+            (start, Some(end))
+        }
+        false => (day, None),
+    };
+
+    let time_entries = client.get_time_entries(from, to)?;
+    match week {
+        true => {
+            let issue_ids = &time_entries
+                .time_entries
+                .iter()
+                .filter_map(|t| t.issue.as_ref().map(|i| i.id))
+                .map(|id| id.to_string())
+                .collect::<Vec<String>>();
+            let issues = client.get_issues(&issue_ids)?;
+            let report = Report::from_entries(&time_entries.time_entries, &issues.issues);
+
+            let table =
+                report.to_table_struct(&(from + Duration::days(1)).date_naive(), with_issues);
+            print_stdout(
+                table
+                    .dimmed(true)
+                    .foreground_color(Some(Color::Rgb(150, 150, 150))),
+            )?;
+            Ok(())
+        }
+        false => {
+            let report = Report::from_entries(&time_entries.time_entries, &vec![]);
+            let daily_report = report.get_report_for_date(&from.date_naive());
+            let table = daily_report.to_table_struct();
+            print_stdout(
+                table
+                    .dimmed(true)
+                    .foreground_color(Some(Color::Rgb(150, 150, 150))),
+            )?;
+            Ok(())
+        }
+    }
+}
 
 /// A `Config` defines all parameters necessary, to connect to a Redmine server.
 ///

@@ -13,19 +13,24 @@ use crate::redmine::request::Client;
 use crate::redmine::{CustomField, NewTimeEntry, User};
 use crate::track::Error::{ApiKeyMissing, HomeDirNotFound};
 use std::io;
+use std::str::FromStr;
 use thiserror::Error;
 use url::Url;
 
 /// Track a new value of the time.
-pub fn track(client: &Client, yesterday: bool) -> Result<(), anyhow::Error> {
-    let (project, issue) = match ui::ask_for_issue() {
-        None => {
-            let projects = client.get_projects()?;
-            let project = ui::select_project(projects);
-            (project, None)
+pub fn track(client: &Client, yesterday: bool, id: String) -> Result<(), anyhow::Error> {
+    let (project, issue) = match id {
+        None => match ui::ask_for_issue() {
+            None => {
+                let projects = client.get_projects()?;
+                let project = ui::select_project(projects);
+                (project, None)
+            }
+
+            issue => (None, issue),
         }
 
-        issue => (None, issue),
+        issue => (None, i32::from_str(&issue).ok())
     };
 
     let comment = ui::ask_for_comment();
@@ -83,7 +88,7 @@ pub fn track(client: &Client, yesterday: bool) -> Result<(), anyhow::Error> {
 
 /// Search for the given [`query`] using the given [`Config`] and
 /// display the result to the console.
-pub fn search(client: &Client, query: String) -> anyhow::Result<()> {
+pub fn search(client: &Client, query: String, direct_track: bool) -> anyhow::Result<()> {
     let results = client.search_tickets(query)?;
 
     let headers = vec![
@@ -110,7 +115,12 @@ pub fn search(client: &Client, query: String) -> anyhow::Result<()> {
             .foreground_color(Some(Color::Rgb(150, 150, 150))),
     )?;
 
-    Ok(())
+    if(direct_track && results.results?.len() == 1) {
+        track(client, false, results.results?.first().unwrap().id.to_string())
+    } else {
+        Ok(())
+    }
+
 }
 
 /// List the current.

@@ -12,6 +12,8 @@ use crate::track::Config;
 pub struct Cli {
     #[arg(long = "yesterday", short = 'y', help = "Create entry for yesterday.")]
     yesterday: bool,
+    #[arg(long = "issue", short = 'i', help = "Create entry for specified id.")]
+    id: String,
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -19,7 +21,11 @@ pub struct Cli {
 #[derive(Parser, Debug, Clone)]
 enum Command {
     #[command(name = "search", about = "Search for tickets")]
-    Search { query: String },
+    Search {
+        query: String,
+        #[arg(long = "direct_track", short = 't', help = "If only one Issue is found, start track.")]
+        direct_track: bool
+    },
     #[command(name = "login", about = "Login to your account.")]
     Login {
         #[arg(long = "user", short = 'u', help = "The name of your Redmine user.")]
@@ -71,15 +77,15 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
         )),
         (None, Some(config)) => {
             let client = redmine::request::Client::new(config);
-            track::track(&client, cli.yesterday)
+            track::track(&client, cli.yesterday, cli.id)
         }
         (Some(Command::List(args)), Some(config)) => {
             let client = redmine::request::Client::new(config);
             track::list(&client, args.with_issues, args.previous, args.week)
         }
-        (Some(Command::Search { query }), Some(config)) => {
+        (Some(Command::Search { query , direct_track}), Some(config)) => {
             let client = redmine::request::Client::new(config);
-            track::search(&client, query)
+            track::search(&client, query, direct_track)
         }
     }
 }

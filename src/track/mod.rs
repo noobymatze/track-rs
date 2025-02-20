@@ -18,7 +18,7 @@ use thiserror::Error;
 use url::Url;
 
 /// Track a new value of the time.
-pub fn track(client: &Client, yesterday: bool, id: String) -> Result<(), anyhow::Error> {
+pub fn track(client: &Client, yesterday: bool, id: Option<String>) -> Result<(), anyhow::Error> {
     let (project, issue) = match id {
         None => match ui::ask_for_issue() {
             None => {
@@ -30,7 +30,7 @@ pub fn track(client: &Client, yesterday: bool, id: String) -> Result<(), anyhow:
             issue => (None, issue),
         }
 
-        issue => (None, i32::from_str(&issue).ok())
+        Some(issue) => (None, i32::from_str(&issue).ok())
     };
 
     let comment = ui::ask_for_comment();
@@ -98,11 +98,11 @@ pub fn search(client: &Client, query: String, direct_track: bool) -> anyhow::Res
     ];
     let mut rows = vec![];
     rows.push(headers.row());
-    for result in results.results {
+    for result in &results.results {
         let cells = vec![
             result.id.to_string().cell(),
-            result.title.cell(),
-            result.url.cell(),
+            result.title.clone().cell(),
+            result.url.clone().cell(),
         ];
         rows.push(cells.row())
     }
@@ -115,8 +115,8 @@ pub fn search(client: &Client, query: String, direct_track: bool) -> anyhow::Res
             .foreground_color(Some(Color::Rgb(150, 150, 150))),
     )?;
 
-    if(direct_track && results.results?.len() == 1) {
-        track(client, false, results.results?.first().unwrap().id.to_string())
+    if direct_track && results.results.len() == 1 {
+        track(client, false, Some(results.results.first().unwrap().id.to_string()))
     } else {
         Ok(())
     }

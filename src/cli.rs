@@ -12,8 +12,8 @@ use crate::track::Config;
 pub struct Cli {
     #[arg(long = "yesterday", short = 'y', help = "Create entry for yesterday.")]
     yesterday: bool,
-    #[arg(long = "issue", short = 'i', help = "Create entry for specified id.")]
-    id: String,
+    #[arg(help = "Create entry for specified id.")]
+    id: Option<String>,
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -23,7 +23,7 @@ enum Command {
     #[command(name = "search", about = "Search for tickets")]
     Search {
         query: String,
-        #[arg(long = "direct_track", short = 't', help = "If only one Issue is found, start track.")]
+        #[arg(long = "direct_track", short = 't', help = "If only one Issue is found, start track.", default_value = "false")]
         direct_track: bool
     },
     #[command(name = "login", about = "Login to your account.")]

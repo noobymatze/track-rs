@@ -81,7 +81,7 @@ pub fn track(client: &Client, yesterday: bool, id: Option<String>) -> Result<(),
     };
 
     client.create_time_entry(new_entry)?;
-    list(&client, false, false, false)?;
+    list(&client, false, false, false, None)?;
 
     Ok(())
 }
@@ -124,7 +124,7 @@ pub fn search(client: &Client, query: String, direct_track: bool) -> anyhow::Res
 }
 
 /// List the current.
-pub fn list(client: &Client, with_issues: bool, previous: bool, week: bool) -> anyhow::Result<()> {
+pub fn list(client: &Client, with_issues: bool, previous: bool, week: bool, ignore_custom_field: Option<String>) -> anyhow::Result<()> {
     let day = match (previous, week) {
         (true, false) => chrono::Local::now() - Duration::days(1),
         (true, true) => chrono::Local::now() - Duration::days(7),
@@ -142,16 +142,34 @@ pub fn list(client: &Client, with_issues: bool, previous: bool, week: bool) -> a
     };
 
     let time_entries = client.get_time_entries(from, to)?;
+    
+    // Filter time entries based on ignore_custom_field if specified
+    let filtered_entries = match ignore_custom_field {
+        Some(field_name) => {
+            time_entries.time_entries
+                .into_iter()
+                .filter(|entry| {
+                    // Filter out entries where the custom field is set to a "truthy" value
+                    // null values are treated as false
+                    !entry.custom_fields.iter().any(|cf| {
+                        cf.name == field_name && 
+                        cf.value.as_ref().map_or(false, |v| v == "1" || v.to_lowercase() == "true")
+                    })
+                })
+                .collect()
+        }
+        None => time_entries.time_entries,
+    };
+    
     match week {
         true => {
-            let issue_ids = &time_entries
-                .time_entries
+            let issue_ids = &filtered_entries
                 .iter()
                 .filter_map(|t| t.issue.as_ref().map(|i| i.id))
                 .map(|id| id.to_string())
                 .collect::<Vec<String>>();
             let issues = client.get_issues(&issue_ids)?;
-            let report = Report::from_entries(&time_entries.time_entries, &issues.issues);
+            let report = Report::from_entries(&filtered_entries, &issues.issues);
 
             let table =
                 report.to_table_struct(&(from + Duration::days(1)).date_naive(), with_issues);
@@ -163,7 +181,7 @@ pub fn list(client: &Client, with_issues: bool, previous: bool, week: bool) -> a
             Ok(())
         }
         false => {
-            let report = Report::from_entries(&time_entries.time_entries, &vec![]);
+            let report = Report::from_entries(&filtered_entries, &vec![]);
             let daily_report = report.get_report_for_date(&from.date_naive());
             let table = daily_report.to_table_struct();
             print_stdout(

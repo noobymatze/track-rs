@@ -74,22 +74,26 @@ pub fn ask_for_hours() -> f64 {
 pub fn ask_for_custom_field(field: CustomField) -> anyhow::Result<Option<CustomValue>> {
     match &*field.field_format {
         "bool" => {
-            let result = Confirm::new().with_prompt(field.name).interact()?;
+            let field_name = field.name.clone();
+            let result = Confirm::new().with_prompt(&field_name).interact()?;
 
             Ok(Some(CustomValue {
                 id: field.id,
-                value: match result {
+                name: field_name,
+                value: Some(match result {
                     true => "1".to_string(),
                     false => "0".to_string(),
-                },
+                }),
             }))
         }
 
         "string" => {
-            let result = Input::new().with_prompt(field.name).interact()?;
+            let field_name = field.name.clone();
+            let result = Input::new().with_prompt(&field_name).interact()?;
             Ok(Some(CustomValue {
                 id: field.id,
-                value: result,
+                name: field_name,
+                value: Some(result),
             }))
         }
 

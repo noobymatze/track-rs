@@ -57,6 +57,10 @@ struct ListArgs {
     /// Show a summary of the weekly activity.
     #[arg(long = "week", short = 'w')]
     week: bool,
+
+    /// Ignore time entries that have the specified custom field name.
+    #[arg(long = "ignore")]
+    ignore_custom_field: Option<String>,
 }
 
 pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
@@ -81,7 +85,7 @@ pub fn run(cli: Cli, config: Option<Config>) -> Result<(), anyhow::Error> {
         }
         (Some(Command::List(args)), Some(config)) => {
             let client = redmine::request::Client::new(config);
-            track::list(&client, args.with_issues, args.previous, args.week)
+            track::list(&client, args.with_issues, args.previous, args.week, args.ignore_custom_field)
         }
         (Some(Command::Search { query , direct_track}), Some(config)) => {
             let client = redmine::request::Client::new(config);

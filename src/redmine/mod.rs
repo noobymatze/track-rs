@@ -25,6 +25,8 @@ pub struct TimeEntry {
     pub hours: f64,
     pub comments: Option<String>,
     pub spent_on: String,
+    #[serde(default)]
+    pub custom_fields: Vec<CustomValue>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -126,10 +128,11 @@ impl CustomField {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct CustomValue {
     pub id: i32,
-    pub value: String,
+    pub name: String,
+    pub value: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

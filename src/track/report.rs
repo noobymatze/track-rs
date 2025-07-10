@@ -459,6 +459,7 @@ mod tests {
             hours,
             comments: None,
             spent_on: spent_on.format("%Y-%m-%d").to_string(),
+            custom_fields: vec![],
         }
     }
 }
